@@ -1,4 +1,5 @@
 ﻿using System;
+using ARESLauncher;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -34,17 +35,6 @@ class Program
       return;
     }
 
-    var mainWindow = lifetime.MainWindow;
-
-    if(mainWindow is not null)
-    {
-      mainWindow.Closing += (sender, e) =>
-      {
-        e.Cancel = true;
-        mainWindow.Hide();
-      };
-    }
-
     var iconPath = "avares://ARESLauncher/Assets/BlackARESLogo_Smol.ico";
     var icon = AssetLoader.Open(new Uri(iconPath));
     var trayIcon = new TrayIcon
@@ -75,6 +65,10 @@ class Program
             {
               Command = ReactiveCommand.Create(() =>
               {
+                if(Application.Current is App app)
+                {
+                  app.BeginShutdown();
+                }
                 lifetime.Shutdown();
               })
             }

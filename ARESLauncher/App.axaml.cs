@@ -9,6 +9,8 @@ namespace ARESLauncher;
 
 public partial class App : Application
 {
+  public bool IsShuttingDown { get; private set; }
+
   public override void Initialize()
   {
     AvaloniaXamlLoader.Load(this);
@@ -29,6 +31,17 @@ public partial class App : Application
       };
 
       desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+
+      desktop.ShutdownRequested += (_, _) =>
+      {
+        // TODO: Double check this works on Windows
+        IsShuttingDown = true;
+      };
+
+      desktop.Exit += (_, _) =>
+      {
+        IsShuttingDown = true;
+      };
     }
     else if(ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
     {
@@ -39,5 +52,10 @@ public partial class App : Application
     }
 
     base.OnFrameworkInitializationCompleted();
+  }
+
+  public void BeginShutdown()
+  {
+    IsShuttingDown = true;
   }
 }
