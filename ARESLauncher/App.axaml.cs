@@ -1,13 +1,14 @@
-﻿using ARESLauncher.ViewModels;
+using ARESLauncher.ViewModels;
 using ARESLauncher.Views;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ARESLauncher;
 
-public partial class App : Application
+public class App : Application
 {
   public bool IsShuttingDown { get; private set; }
 
@@ -23,14 +24,14 @@ public partial class App : Application
     var services = collection.BuildServiceProvider();
 
     var vm = services.GetRequiredService<MainViewModel>();
-    if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
     {
       desktop.MainWindow = new MainWindow
       {
         DataContext = vm
       };
 
-      desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+      desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
       desktop.ShutdownRequested += (_, _) =>
       {
@@ -38,12 +39,9 @@ public partial class App : Application
         IsShuttingDown = true;
       };
 
-      desktop.Exit += (_, _) =>
-      {
-        IsShuttingDown = true;
-      };
+      desktop.Exit += (_, _) => { IsShuttingDown = true; };
     }
-    else if(ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
+    else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
     {
       singleViewPlatform.MainView = new MainView
       {
