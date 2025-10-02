@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36408.4 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARES-Launcher", "ARES-Launcher\ARES-Launcher.csproj", "{CD9C956D-970E-266F-185C-425A8D36D044}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARESLauncher", "ARESLauncher\ARESLauncher.csproj", "{CD9C956D-970E-266F-185C-425A8D36D044}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARES-Launcher.Desktop", "ARES-Launcher.Desktop\ARES-Launcher.Desktop.csproj", "{18A75A1F-5C8B-B624-C347-43668ABAE04B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARESLauncher.Desktop", "ARESLauncher.Desktop\ARESLauncher.Desktop.csproj", "{18A75A1F-5C8B-B624-C347-43668ABAE04B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

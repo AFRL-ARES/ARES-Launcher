@@ -14,6 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ARES-Launcher\ARES-Launcher.csproj" />
+    <ProjectReference Include="..\ARESLauncher\ARESLauncher.csproj" />
   </ItemGroup>
 </Project>

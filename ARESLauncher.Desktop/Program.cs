@@ -6,7 +6,7 @@ using Avalonia.Platform;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 
-namespace ARES_Launcher.Desktop;
+namespace ARESLauncher.Desktop;
 
 class Program
 {
@@ -45,7 +45,7 @@ class Program
       };
     }
 
-    var iconPath = "avares://ARES-Launcher/Assets/BlackARESLogo_Smol.ico";
+    var iconPath = "avares://ARESLauncher/Assets/BlackARESLogo_Smol.ico";
     var icon = AssetLoader.Open(new Uri(iconPath));
     var trayIcon = new TrayIcon
     {

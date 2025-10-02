@@ -1,11 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:ARES_Launcher.ViewModels"
+        xmlns:vm="using:ARESLauncher.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:views="clr-namespace:ARES_Launcher.Views"
+        xmlns:views="clr-namespace:ARESLauncher.Views"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="ARES_Launcher.Views.MainWindow"
+        x:Class="ARESLauncher.Views.MainWindow"
         Icon="/Assets/BlackARESLogo_Smol.ico"
         Title="ARES Launcher">
         <views:MainView />

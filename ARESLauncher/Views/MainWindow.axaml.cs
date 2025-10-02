@@ -1,6 +1,6 @@
 ﻿using Avalonia.Controls;
 
-namespace ARES_Launcher.Views;
+namespace ARESLauncher.Views;
 
 public partial class MainWindow : Window
 {
@@ -12,7 +12,7 @@ public partial class MainWindow : Window
   protected override void OnClosing(WindowClosingEventArgs e)
   {
     e.Cancel = true;
-    this.Hide();
+    Hide();
     base.OnClosing(e);
   }
 }

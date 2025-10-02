@@ -1,11 +1,10 @@
-﻿using ARES_Launcher.ViewModels;
-using ARES_Launcher.Views;
-
+﻿using ARESLauncher.ViewModels;
+using ARESLauncher.Views;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-namespace ARES_Launcher;
+namespace ARESLauncher;
 
 public partial class App : Application
 {

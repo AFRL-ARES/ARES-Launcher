@@ -1,4 +1,4 @@
-﻿namespace ARES_Launcher.ViewModels;
+﻿namespace ARESLauncher.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
