@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36408.4 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARES-Launcher", "ARES-Launcher\ARES-Launcher.csproj", "{CD9C956D-970E-266F-185C-425A8D36D044}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARES-Launcher.Desktop", "ARES-Launcher.Desktop\ARES-Launcher.Desktop.csproj", "{18A75A1F-5C8B-B624-C347-43668ABAE04B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CD9C956D-970E-266F-185C-425A8D36D044}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD9C956D-970E-266F-185C-425A8D36D044}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD9C956D-970E-266F-185C-425A8D36D044}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD9C956D-970E-266F-185C-425A8D36D044}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18A75A1F-5C8B-B624-C347-43668ABAE04B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18A75A1F-5C8B-B624-C347-43668ABAE04B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18A75A1F-5C8B-B624-C347-43668ABAE04B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18A75A1F-5C8B-B624-C347-43668ABAE04B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A5F9CC5B-00D5-495C-A983-705B0D1DF617}
+	EndGlobalSection
+EndGlobal
