@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using ARESLauncher.Models;
 
 namespace ARESLauncher.Services;
 
@@ -11,10 +12,10 @@ namespace ARESLauncher.Services;
 public interface IAresBinaryManager
 {
   /// <summary>
-  /// Current version of ARES in the data directory.
+  /// The data of the currently installed ARES in the data directory.
   /// If null, that means there's no ARES installed.
   /// </summary>
-  Version? CurrentVersion { get; }
+  AresBinary? CurrentBinary { get; }
   
   /// <summary>
   /// All available versions of ARES that the manager knows about.
@@ -34,13 +35,15 @@ public interface IAresBinaryManager
   Task Refresh();
 
   /// <summary>
-  /// Sets a new path for where the UI binaries should be stored
+  /// Sets a new path for where the UI binaries should be stored.
+  /// Does not move the binaries if present in current path
   /// </summary>
   /// <param name="path"></param>
   void SetUiDataPath(Uri path);
 
   /// <summary>
   /// Sets a new path for where the service binaries should be stored
+  /// Does not move the binaries if present in current path
   /// </summary>
   /// <param name="uri"></param>
   void SetServiceDataPath(Uri uri);

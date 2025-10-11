@@ -11,6 +11,10 @@ namespace ARESLauncher.Services;
 /// </summary>
 public interface IAresDownloader
 {
-  Task<Version[]> GetAvailableVersions(AresComponent component);
-  Task Download(Version version, AresComponent component, Uri destination);
+  Task<Version[]> GetAvailableVersions(AresSource source, AresComponent component);
+  Task Download(AresSource source, Version version, AresComponent component, Uri destination);
+  
+  IObservable<DownloadStage> DownloadStage { get; }
+  IObservable<double> StageProgress { get; }
+  IObservable<double> TotalProgress { get; }
 }
