@@ -9,10 +9,11 @@ namespace ARESLauncher.Services;
 
 public class Downloader(ILogger<Downloader> _logger) : IDownloader
 {
-  public async Task<DownloadResult> Download(Uri source, Uri destination)
+  public async Task<DownloadResult> Download(Uri source, Uri destination, IProgress<double>? progress)
   {
     using var client = new HttpClient();
-    using var response = await client.GetAsync(source);
+    using var response = await client.GetAsync(source, HttpCompletionOption.ResponseHeadersRead);
+    
     if (!response.IsSuccessStatusCode)
     {
       return new DownloadResult(false, response.ReasonPhrase ?? "Unknown Error :)", null);
@@ -29,8 +30,9 @@ public class Downloader(ILogger<Downloader> _logger) : IDownloader
       return new DownloadResult(false, ensureError, null);
     }
     
-    await using var fileStream = new FileStream(ensurePath, FileMode.Create);
-    await response.Content.CopyToAsync(fileStream);
+    await using var fileStream = new FileStream(ensurePath, FileMode.Create, FileAccess.Write, FileShare.None);
+    await using var networkStream = await response.Content.ReadAsStreamAsync();
+    await CopyWithProgressAsync(networkStream, fileStream, response.Content.Headers.ContentLength, progress);
 
     return new DownloadResult(true, "", new Uri(Path.GetFullPath(ensurePath)));
   }
@@ -113,5 +115,33 @@ public class Downloader(ILogger<Downloader> _logger) : IDownloader
     var safeName = Path.GetFileName(trimmed);
 
     return string.IsNullOrWhiteSpace(safeName) ? null : safeName;
+  }
+
+  private static async Task CopyWithProgressAsync(Stream source, Stream destination, long? contentLength, IProgress<double>? progress)
+  {
+    const int bufferSize = 81920;
+    var buffer = new byte[bufferSize];
+    long totalRead = 0;
+    int read;
+
+    while ((read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length))) > 0)
+    {
+      await destination.WriteAsync(buffer.AsMemory(0, read));
+      totalRead += read;
+
+      if (contentLength.HasValue && contentLength.Value > 0)
+      {
+        progress?.Report(Math.Min(1.0, (double)totalRead / contentLength.Value));
+      }
+    }
+
+    if (!contentLength.HasValue || contentLength.Value == 0)
+    {
+      progress?.Report(double.NaN);
+    }
+    else
+    {
+      progress?.Report(1.0);
+    }
   }
 }

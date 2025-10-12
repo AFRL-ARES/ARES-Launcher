@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
+using NuGet.Versioning;
 
 namespace ARESLauncher.Services;
 
@@ -21,7 +22,7 @@ public interface IAresBinaryManager
   /// All available versions of ARES that the manager knows about.
   /// These are primarily the versions that can be acquired.
   /// </summary>
-  Version[] AvailableVersions { get; }
+  SemanticVersion[] AvailableVersions { get; }
   
   /// <summary>
   /// Whether the latest version of ARES is newer than the currently installed one.

@@ -7,5 +7,5 @@ namespace ARESLauncher.Services;
 
 public interface IDownloader
 {
-  Task<DownloadResult> Download(Uri source, Uri destination);
+  Task<DownloadResult> Download(Uri source, Uri destination, IProgress<double>? progress = null);
 }
