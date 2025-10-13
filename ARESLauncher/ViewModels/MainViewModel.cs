@@ -1,5 +1,4 @@
 using ARESLauncher.Services.Configuration;
-using ReactiveUI;
 
 namespace ARESLauncher.ViewModels;
 

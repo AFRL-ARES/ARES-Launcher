@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
 
-namespace ARESLauncher.Services;
+namespace ARESLauncher.Tools;
 
 public static class Downloader
 {

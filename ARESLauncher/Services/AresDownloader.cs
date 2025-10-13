@@ -5,6 +5,7 @@ using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using ARESLauncher.Configuration;
 using ARESLauncher.Models;
+using ARESLauncher.Tools;
 using NuGet.Versioning;
 using Octokit;
 

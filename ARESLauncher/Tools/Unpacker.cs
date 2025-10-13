@@ -3,7 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Threading.Tasks;
 
-namespace ARESLauncher.Services;
+namespace ARESLauncher.Tools;
 
 public static class Unpacker
 {

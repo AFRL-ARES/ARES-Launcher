@@ -5,10 +5,12 @@ namespace ARESLauncher.Services;
 
 public interface IDatabaseManager
 {
-  Task<DatabaseStatus> GetStatus();
+  DatabaseStatus DatabaseStatus { get; }
   Task RunMigrations();
-  Task<DatabaseProvider> GetCurrentProvider();
-  Task<string> GetConnectionString();
-  Task SetProvider(DatabaseProvider provider);
-  Task SetConnectionString(string connectionString);
+  
+  /// <summary>
+  /// Refreshes the status of the database as reported from the Ares Service
+  /// </summary>
+  /// <returns></returns>
+  Task Refresh();
 }

@@ -1,4 +1,3 @@
-using System;
 using NuGet.Versioning;
 
 namespace ARESLauncher.Models;
