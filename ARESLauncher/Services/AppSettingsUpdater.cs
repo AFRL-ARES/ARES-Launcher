@@ -1,26 +1,26 @@
 using System;
 using System.IO;
-using ARESLauncher.Configuration;
+using ARESLauncher.Services.Configuration;
 using ARESLauncher.Models;
 
 namespace ARESLauncher.Services;
 
-public class AppSettingsUpdater(LauncherConfiguration _configuration) : IAppSettingsUpdater
+public class AppSettingsUpdater(IAppConfigurationService _configurationService) : IAppSettingsUpdater
 {
   public void Update(AresComponent component)
   {
     var path = component switch
     {
-      AresComponent.Ui => _configuration.UiDataPath,
-      AresComponent.Service => _configuration.ServiceDataPath,
+      AresComponent.Ui => _configurationService.Current.UiDataPath,
+      AresComponent.Service => _configurationService.Current.ServiceDataPath,
       _ => throw new ArgumentOutOfRangeException(nameof(component), component, null)
     };
 
     path = Path.Combine(path, "appsettings.json");
     AppSettingsHelper.Update(path, appSettings =>
     {
-      appSettings.DatabaseProvider = _configuration.DatabaseProvider;
-      appSettings.ConnectionStrings[DatabaseProvider.Sqlite] = _configuration.SqliteDatabasePath;
+      appSettings.DatabaseProvider = _configurationService.Current.DatabaseProvider;
+      appSettings.ConnectionStrings[DatabaseProvider.Sqlite] = _configurationService.Current.SqliteDatabasePath;
     });
   }
 

@@ -3,7 +3,7 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
-using ARESLauncher.Configuration;
+using ARESLauncher.Services.Configuration;
 using ARESLauncher.Models;
 using ARESLauncher.Tools;
 using NuGet.Versioning;
@@ -14,16 +14,16 @@ public class AresUpdater : IAresUpdater
 {
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IAppSettingsUpdater _appSettingsUpdater;
-  private readonly LauncherConfiguration _configuration;
+  private readonly IAppConfigurationService _configurationService;
   private readonly IAresDownloader _downloader;
   private readonly ISubject<double> _updateProgressSubject = new BehaviorSubject<double>(0);
   private readonly ISubject<string> _updateStepSubject = new BehaviorSubject<string>("");
 
-  public AresUpdater(IAresDownloader downloader, LauncherConfiguration configuration,
+  public AresUpdater(IAresDownloader downloader, IAppConfigurationService configurationService,
     IAresBinaryManager aresBinaryManager, IAppSettingsUpdater appSettingsUpdater)
   {
     _downloader = downloader;
-    _configuration = configuration;
+    _configurationService = configurationService;
     _aresBinaryManager = aresBinaryManager;
     _appSettingsUpdater = appSettingsUpdater;
 
@@ -33,25 +33,25 @@ public class AresUpdater : IAresUpdater
 
   public Task<SemanticVersion[]> GetAvailableVersions()
   {
-    var source = _configuration.DefaultAresRepo;
+    var source = _configurationService.Current.DefaultAresRepo;
     return _downloader.GetAvailableVersions(source);
   }
 
   public async Task Update(SemanticVersion version)
   {
     if (version == _aresBinaryManager.CurrentVersion &&
-        _configuration.DefaultAresRepo == _aresBinaryManager.CurrentSource)
+        _configurationService.Current.DefaultAresRepo == _aresBinaryManager.CurrentSource)
       // We must be up to date
       return;
 
-    var uiDir = _configuration.UiDataPath;
-    var serviceDir = _configuration.ServiceDataPath;
+    var uiDir = _configurationService.Current.UiDataPath;
+    var serviceDir = _configurationService.Current.ServiceDataPath;
 
     _updateStepSubject.OnNext("Cleaning up the previous version.");
     Directory.Delete(uiDir, true);
     Directory.Delete(serviceDir, true);
 
-    var source = _configuration.DefaultAresRepo;
+    var source = _configurationService.Current.DefaultAresRepo;
     var tempPath = Path.GetTempPath();
     _updateStepSubject.OnNext("Acquiring the UI.");
     var uiDest = await _downloader.Download(source, version, AresComponent.Ui, tempPath,

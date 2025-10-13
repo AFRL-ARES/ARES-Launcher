@@ -1,19 +1,19 @@
 using System.IO;
 using System.Runtime.InteropServices;
-using ARESLauncher.Configuration;
+using ARESLauncher.Services.Configuration;
 
 namespace ARESLauncher.Services;
 
-public class ExecutableGetter(LauncherConfiguration _configuration) : IExecutableGetter
+public class ExecutableGetter(IAppConfigurationService _configurationService) : IExecutableGetter
 {
   public string? GetUiExecutablePath()
   {
-    return GetPath(_configuration.UiDataPath, "UI");
+    return GetPath(_configurationService.Current.UiDataPath, "UI");
   }
 
   public string? GetServiceExecutablePath()
   {
-    return GetPath(_configuration.ServiceDataPath, "AresService");
+    return GetPath(_configurationService.Current.ServiceDataPath, "AresService");
   }
 
   private string? GetPath(string dataPath, string name)

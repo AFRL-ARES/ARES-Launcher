@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
-using ARESLauncher.Configuration;
+using ARESLauncher.Services.Configuration;
 using ARESLauncher.Models;
 using ARESLauncher.Tools;
 using NuGet.Versioning;
@@ -11,7 +11,7 @@ using Octokit;
 
 namespace ARESLauncher.Services;
 
-public class AresDownloader(LauncherConfiguration configuration) : IAresDownloader
+public class AresDownloader(IAppConfigurationService configurationService) : IAresDownloader
 {
   private readonly ISubject<double> _progressSubject = new BehaviorSubject<double>(0);
 
@@ -33,7 +33,7 @@ public class AresDownloader(LauncherConfiguration configuration) : IAresDownload
   }
 
   public async Task<string> Download(AresSource source, SemanticVersion version, AresComponent component,
-    string destination, IProgress<double> progress)
+    string destination, IProgress<double>? progress = null)
   {
     var client = CreateClient();
     var release = await GetReleaseForVersion(client, source, version);
@@ -55,7 +55,8 @@ public class AresDownloader(LauncherConfiguration configuration) : IAresDownload
   {
     var client = new GitHubClient(new ProductHeaderValue("ares-launcher"));
 
-    if (!string.IsNullOrEmpty(configuration.GitToken)) client.Credentials = new Credentials(configuration.GitToken);
+    if (!string.IsNullOrEmpty(configurationService.Current.GitToken))
+      client.Credentials = new Credentials(configurationService.Current.GitToken);
 
     return client;
   }
