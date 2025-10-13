@@ -16,5 +16,6 @@ public class LauncherConfiguration
   public string UiDataPath { get; set; } = Path.Join(_appPath, "Data", "UI");
   public string ServiceDataPath { get; set; } = Path.Join(_appPath, "Data", "Service");
   public string SqliteDatabasePath { get; set; } = Path.Join(_appPath, "Data", "ares_database.db");
+  public DatabaseProvider DatabaseProvider { get; set; } = DatabaseProvider.None;
   public string GitToken { get; set; } = "";
 }
