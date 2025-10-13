@@ -64,9 +64,11 @@ public class AresUpdater : IAresUpdater
     await Unpacker.Unpack(uiDest, uiDir);
     await Unpacker.Unpack(serviceDest, serviceDir);
 
+    BinaryMetadataHelper.WriteMetadata(uiDir, source, version);
+    BinaryMetadataHelper.WriteMetadata(serviceDir, source, version);
+
     await _aresBinaryManager.Refresh();
     _appSettingsUpdater.UpdateAll();
-    var tempDir = Path.GetTempPath();
   }
 
   public IObservable<string> UpdateStep { get; }
