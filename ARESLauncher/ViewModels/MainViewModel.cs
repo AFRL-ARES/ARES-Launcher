@@ -1,18 +1,23 @@
-using ARESLauncher.Services.Configuration;
+using System;
 
 namespace ARESLauncher.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
-  private readonly IAppConfigurationService _configurationService;
-
-  public MainViewModel(IAppConfigurationService configurationService)
+  public MainViewModel(ConfigurationOverviewViewModel overview,
+    ConfigurationEditorViewModel editor)
   {
-    _configurationService = configurationService;
-    
+    Overview = overview ?? throw new ArgumentNullException(nameof(overview));
+    Editor = editor ?? throw new ArgumentNullException(nameof(editor));
+
+    Editor.ConfigurationSaved += OnConfigurationSaved;
   }
 
-  public string UIDirectory => _configurationService.Current.UiDataPath;
+  public ConfigurationOverviewViewModel Overview { get; }
+  public ConfigurationEditorViewModel Editor { get; }
 
-  public string ServiceDirectory => _configurationService.Current.ServiceDataPath;
+  private void OnConfigurationSaved(object? sender, EventArgs e)
+  {
+    Overview.Refresh();
+  }
 }

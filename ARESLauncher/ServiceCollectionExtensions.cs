@@ -17,6 +17,8 @@ public static class ServiceCollectionExtensions
     collection.AddSingleton<IAresStarter, AresStarter>();
     collection.AddSingleton<IDatabaseManager, DatabaseManager>();
     collection.AddSingleton<IExecutableGetter, ExecutableGetter>();
+    collection.AddTransient<ConfigurationOverviewViewModel>();
+    collection.AddTransient<ConfigurationEditorViewModel>();
     collection.AddTransient<MainViewModel>();
   }
 }

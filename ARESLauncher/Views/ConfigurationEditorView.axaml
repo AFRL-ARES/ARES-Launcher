@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
+             mc:Ignorable="d"
+             x:Class="ARESLauncher.Views.ConfigurationEditorView"
+             x:DataType="vm:ConfigurationEditorViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="16"
+                Spacing="12">
+      <Grid ColumnDefinitions="Auto,*"
+            RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+        <TextBlock Grid.Row="0"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="UI data path:" />
+        <TextBox Grid.Row="0"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding EditableUiDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Grid.Row="1"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="Service data path:" />
+        <TextBox Grid.Row="1"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding EditableServiceDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Grid.Row="2"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="SQLite database path:" />
+        <TextBox Grid.Row="2"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Grid.Row="3"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="Database provider:" />
+        <ComboBox Grid.Row="3"
+                  Grid.Column="1"
+                  Margin="12,0,0,8"
+                  ItemsSource="{Binding DatabaseProviders}"
+                  SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
+
+        <TextBlock Grid.Row="4"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="Default repo owner:" />
+        <TextBox Grid.Row="4"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding EditableDefaultRepoOwner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Grid.Row="5"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="Default repo name:" />
+        <TextBox Grid.Row="5"
+                 Grid.Column="1"
+                 Margin="12,0,0,0"
+                 Text="{Binding EditableDefaultRepoName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+      </Grid>
+
+      <StackPanel Spacing="8">
+        <TextBlock Text="Available repositories:" />
+        <ListBox ItemsSource="{Binding AvailableRepositories}"
+                 SelectedItem="{Binding SelectedAvailableRepository, Mode=TwoWay}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:AresSourceEditorViewModel">
+              <Grid ColumnDefinitions="*,*"
+                    Margin="0,0,0,8">
+                <TextBox Grid.Column="0"
+                         Margin="0,0,8,0"
+                         Watermark="Owner"
+                         Text="{Binding Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="1"
+                         Watermark="Repository"
+                         Text="{Binding Repo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8">
+          <Button Content="Add repository"
+                  Command="{Binding AddRepositoryCommand}" />
+          <Button Content="Remove selected"
+                  Command="{Binding RemoveSelectedRepositoryCommand}" />
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel>
+        <TextBlock Text="Git token:" />
+        <TextBox Text="{Binding EditableGitToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 PasswordChar="*" />
+      </StackPanel>
+
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Right"
+                  Spacing="8">
+        <Button Content="Reset"
+                Command="{Binding ResetConfigurationCommand}" />
+        <Button Content="Save"
+                Command="{Binding SaveConfigurationCommand}" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

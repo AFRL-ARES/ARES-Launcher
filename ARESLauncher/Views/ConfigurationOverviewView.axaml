@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
+             mc:Ignorable="d"
+             x:Class="ARESLauncher.Views.ConfigurationOverviewView"
+             x:DataType="vm:ConfigurationOverviewViewModel">
+  <ScrollViewer>
+    <Grid Margin="16"
+          ColumnDefinitions="Auto,*"
+          RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+      <TextBlock Grid.Row="0"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="UI data path:" />
+      <TextBlock Grid.Row="0"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding UiDataPath}" />
+
+      <TextBlock Grid.Row="1"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="Service data path:" />
+      <TextBlock Grid.Row="1"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding ServiceDataPath}" />
+
+      <TextBlock Grid.Row="2"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="SQLite database path:" />
+      <TextBlock Grid.Row="2"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding SqliteDatabasePath}" />
+
+      <TextBlock Grid.Row="3"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="Database provider:" />
+      <TextBlock Grid.Row="3"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding DatabaseProvider}" />
+
+      <TextBlock Grid.Row="4"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="Default repo:" />
+      <TextBlock Grid.Row="4"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding DefaultRepositoryDisplay}" />
+
+      <TextBlock Grid.Row="5"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="Available repos:" />
+      <ItemsControl Grid.Row="5"
+                    Grid.Column="1"
+                    Margin="12,0,0,8"
+                    ItemsSource="{Binding AvailableRepositoriesDisplay}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Text="{Binding .}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <TextBlock Grid.Row="6"
+                 Grid.Column="0"
+                 Margin="0,0,0,8"
+                 Text="Git token:" />
+      <TextBlock Grid.Row="6"
+                 Grid.Column="1"
+                 Margin="12,0,0,0"
+                 Text="{Binding GitToken}" />
+    </Grid>
+  </ScrollViewer>
+</UserControl>
