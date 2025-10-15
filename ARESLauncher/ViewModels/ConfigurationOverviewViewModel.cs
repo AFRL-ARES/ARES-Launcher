@@ -73,7 +73,7 @@ public class ConfigurationOverviewViewModel : ViewModelBase
     ServiceDataPath = current.ServiceDataPath;
     SqliteDatabasePath = current.SqliteDatabasePath;
     DatabaseProvider = current.DatabaseProvider.ToString();
-    DefaultRepositoryDisplay = $"{current.DefaultAresRepo.Owner}/{current.DefaultAresRepo.Repo}";
+    DefaultRepositoryDisplay = $"{current.CurrentAresRepo.Owner}/{current.CurrentAresRepo.Repo}";
     AvailableRepositoriesDisplay = current.AvailableAresRepos.Select(repo => $"{repo.Owner}/{repo.Repo}").ToArray();
     GitToken = current.GitToken;
   }

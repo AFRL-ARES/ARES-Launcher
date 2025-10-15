@@ -4,8 +4,9 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
-using ARESLauncher.Services.Configuration;
 using ARESLauncher.Models;
+using ARESLauncher.Services.Configuration;
+using ARESLauncher.Tools;
 using Microsoft.Extensions.Logging;
 using NuGet.Versioning;
 
@@ -44,8 +45,8 @@ public class AresBinaryManager : IAresBinaryManager
   {
     get
     {
-      if (AvailableVersions.Length == 0) return false;
-      if (CurrentVersion is null) return true;
+      if(AvailableVersions.Length == 0) return false;
+      if(CurrentVersion is null) return true;
       var latest = GetLatestVersion(AvailableVersions);
       return latest > CurrentVersion;
     }
@@ -57,19 +58,36 @@ public class AresBinaryManager : IAresBinaryManager
     UiSettings = TryLoadAppSettings(Path.Combine(_configurationService.Current.UiDataPath, "appsettings.json"));
     ServiceSettings = TryLoadAppSettings(Path.Combine(_configurationService.Current.ServiceDataPath, "appsettings.json"));
 
+    if(_logger.IsEnabled(LogLevel.Debug))
+    {
+      if(UiSettings is null)
+      {
+        _logger.LogDebug("Ui settings not found in {}", _configurationService.Current.UiDataPath);
+      }
+      if(ServiceSettings is null)
+      {
+        _logger.LogDebug("Service settings not found in {}", _configurationService.Current.ServiceDataPath);
+      }
+    }
+
     var uiMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.UiDataPath);
     var serviceMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.ServiceDataPath);
     var metadata = uiMetadata ?? serviceMetadata;
 
-    if (uiMetadata is not null && serviceMetadata is not null)
+    if(uiMetadata is not null && serviceMetadata is not null)
     {
       var versionsMatch = string.Equals(uiMetadata.Version, serviceMetadata.Version, StringComparison.OrdinalIgnoreCase);
       var sourcesMatch = Equals(uiMetadata.Source, serviceMetadata.Source);
-      if (!versionsMatch || !sourcesMatch)
+      if(!versionsMatch || !sourcesMatch)
         _logger.LogWarning("Binary metadata mismatch between UI and Service directories.");
     }
 
     var versionFromMetadata = TryParseVersion(metadata?.Version);
+
+    if(versionFromMetadata is null)
+    {
+      _logger.LogWarning("Unable to find the version metadata file. Gonna try assembly version.");
+    }
 
     // Determine installed version by inspecting one of the binaries (prefer UI, then service) if metadata missing.
     // We technically wouldn't really use the file/assembly info to set the version, but AI thought it was a good
@@ -77,17 +95,17 @@ public class AresBinaryManager : IAresBinaryManager
     CurrentVersion = versionFromMetadata ?? TryGetInstalledVersion();
 
     // Prefer source from metadata, otherwise fall back to default source when version is known.
-    CurrentSource = metadata?.Source ?? (CurrentVersion is not null ? _configurationService.Current.DefaultAresRepo : null);
+    CurrentSource = metadata?.Source ?? (CurrentVersion is not null ? _configurationService.Current.CurrentAresRepo : null);
 
     // Query available versions from the default source
     try
     {
-      AvailableVersions = await _downloader.GetAvailableVersions(_configurationService.Current.DefaultAresRepo);
+      AvailableVersions = await _downloader.GetAvailableVersions(_configurationService.Current.CurrentAresRepo);
     }
-    catch (Exception ex)
+    catch(Exception ex)
     {
       _logger.LogError(ex, "Failed to query available ARES versions.");
-      AvailableVersions = Array.Empty<SemanticVersion>();
+      AvailableVersions = [];
     }
   }
 
@@ -111,13 +129,13 @@ public class AresBinaryManager : IAresBinaryManager
       _executableGetter.GetServiceExecutablePath()
     ];
 
-    foreach (var candidate in candidates)
+    foreach(var candidate in candidates)
     {
-      if (string.IsNullOrWhiteSpace(candidate) || !File.Exists(candidate)) continue;
+      if(string.IsNullOrWhiteSpace(candidate) || !File.Exists(candidate)) continue;
 
       // Prefer managed assembly version if available
       var semver = TryGetVersionFromAssembly(candidate) ?? TryGetVersionFromFileInfo(candidate);
-      if (semver is not null) return semver;
+      if(semver is not null) return semver;
     }
 
     return null;
@@ -129,7 +147,7 @@ public class AresBinaryManager : IAresBinaryManager
     {
       var asmName = AssemblyName.GetAssemblyName(path);
       var v = asmName.Version;
-      if (v is null) return null;
+      if(v is null) return null;
       // Convert System.Version to SemanticVersion (drop revision if -1)
       return new SemanticVersion(v.Major, v.Minor, Math.Max(0, v.Build));
     }
@@ -145,12 +163,12 @@ public class AresBinaryManager : IAresBinaryManager
     {
       var info = FileVersionInfo.GetVersionInfo(path);
       var versionString = info.ProductVersion ?? info.FileVersion;
-      if (string.IsNullOrWhiteSpace(versionString)) return null;
+      if(string.IsNullOrWhiteSpace(versionString)) return null;
 
       // Trim possible metadata/suffixes not compatible with SemanticVersion parser
       versionString = versionString.Trim();
       var spaceIdx = versionString.IndexOf(' ');
-      if (spaceIdx > 0) versionString = versionString[..spaceIdx];
+      if(spaceIdx > 0) versionString = versionString[..spaceIdx];
 
       return SemanticVersion.TryParse(versionString, out var semver) ? semver : null;
     }
@@ -162,11 +180,11 @@ public class AresBinaryManager : IAresBinaryManager
 
   private static AppSettings? TryLoadAppSettings(string path)
   {
-    if (!File.Exists(path)) return null;
+    if(!File.Exists(path)) return null;
     try
     {
       var json = File.ReadAllText(path);
-      if (string.IsNullOrWhiteSpace(json)) return null;
+      if(string.IsNullOrWhiteSpace(json)) return null;
       return JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
     }
     catch
@@ -177,9 +195,9 @@ public class AresBinaryManager : IAresBinaryManager
 
   private static string ToLocalPath(Uri uri)
   {
-    if (uri.IsAbsoluteUri)
+    if(uri.IsAbsoluteUri)
     {
-      if (uri.IsFile) return uri.LocalPath;
+      if(uri.IsFile) return uri.LocalPath;
       // For non-file URIs, best effort: use absolute URI string
       return uri.AbsoluteUri;
     }
@@ -191,16 +209,16 @@ public class AresBinaryManager : IAresBinaryManager
   private static SemanticVersion GetLatestVersion(SemanticVersion[] versions)
   {
     var latest = versions[0];
-    for (var i = 1; i < versions.Length; i++)
+    for(var i = 1; i < versions.Length; i++)
     {
-      if (versions[i] > latest) latest = versions[i];
+      if(versions[i] > latest) latest = versions[i];
     }
     return latest;
   }
 
   private static SemanticVersion? TryParseVersion(string? versionString)
   {
-    if (string.IsNullOrWhiteSpace(versionString)) return null;
+    if(string.IsNullOrWhiteSpace(versionString)) return null;
     return SemanticVersion.TryParse(versionString, out var version) ? version : null;
   }
 }

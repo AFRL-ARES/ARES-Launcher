@@ -9,7 +9,21 @@
              x:DataType="vm:MainViewModel">
   <TabControl>
     <TabItem Header="Overview">
-      <views:ConfigurationOverviewView DataContext="{Binding Overview}" />
+			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition />
+					<RowDefinition />
+				</Grid.RowDefinitions>
+        <views:ConfigurationOverviewView Grid.Row="0" DataContext="{Binding Overview}" />
+				<StackPanel Grid.Row="1">
+					<TextBlock Text="{Binding AresPresent}"></TextBlock>
+					<TextBlock Text="{Binding DatabaseStatus}"></TextBlock>
+					<Button Command="{Binding StartAres}">Start</Button>
+					<Button Command="{Binding StopAres}">Stop</Button>
+					<Button Command="{Binding Refresh}">Refresh</Button>
+					<Button Command="{Binding AresUpdate}">Ares Update</Button>
+				</StackPanel>
+			</Grid>
     </TabItem>
     <TabItem Header="Configuration">
       <views:ConfigurationEditorView DataContext="{Binding Editor}" />

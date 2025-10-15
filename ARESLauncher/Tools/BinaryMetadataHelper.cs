@@ -4,7 +4,7 @@ using System.Text.Json;
 using ARESLauncher.Models;
 using NuGet.Versioning;
 
-namespace ARESLauncher.Services;
+namespace ARESLauncher.Tools;
 
 public static class BinaryMetadataHelper
 {

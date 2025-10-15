@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 using ARESLauncher.Models;
 
-namespace ARESLauncher.Services;
+namespace ARESLauncher.Tools;
 
 public static class AppSettingsHelper
 {

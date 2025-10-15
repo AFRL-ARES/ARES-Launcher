@@ -136,7 +136,7 @@ public class ConfigurationEditorViewModel : ViewModelBase
       configuration.SqliteDatabasePath = EditableSqliteDatabasePath;
       configuration.DatabaseProvider = EditableDatabaseProvider;
       configuration.GitToken = EditableGitToken;
-      configuration.DefaultAresRepo = new AresSource(EditableDefaultRepoOwner, EditableDefaultRepoName);
+      configuration.CurrentAresRepo = new AresSource(EditableDefaultRepoOwner, EditableDefaultRepoName);
       configuration.AvailableAresRepos = AvailableRepositories
         .Where(repo => !string.IsNullOrWhiteSpace(repo.Owner) && !string.IsNullOrWhiteSpace(repo.Repo))
         .Select(repo => repo.ToAresSource())
@@ -160,8 +160,8 @@ public class ConfigurationEditorViewModel : ViewModelBase
     EditableServiceDataPath = current.ServiceDataPath;
     EditableSqliteDatabasePath = current.SqliteDatabasePath;
     EditableDatabaseProvider = current.DatabaseProvider;
-    EditableDefaultRepoOwner = current.DefaultAresRepo.Owner;
-    EditableDefaultRepoName = current.DefaultAresRepo.Repo;
+    EditableDefaultRepoOwner = current.CurrentAresRepo.Owner;
+    EditableDefaultRepoName = current.CurrentAresRepo.Repo;
     EditableGitToken = current.GitToken;
 
     AvailableRepositories.Clear();
