@@ -1,14 +1,13 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ARESLauncher.Models;
+namespace ARESLauncher.Models.AppSettings;
 
 /// <summary>
 /// Represents the root application settings.
 /// </summary>
-public class AppSettings
+public abstract class AppSettingsBase
 {
-  public TokensConfig? TokensConfig { get; set; }
 
   [JsonConverter(typeof(JsonStringEnumConverter))]
   public DatabaseProvider DatabaseProvider { get; set; } = DatabaseProvider.None;
@@ -22,8 +21,12 @@ public class AppSettings
   public KestrelOptions? Kestrel { get; set; }
 
   public CertificateSettings? CertificateSettings { get; set; }
+}
 
-  public string? AresDataPath { get; set; }
+public class RemoteServiceSettings
+{
+  public string? ServerHost { get; set; } = "localhost";
+  public int ServerPort { get; set; } = 5001;
 }
 
 /// <summary>
@@ -87,6 +90,6 @@ public class CertificateOptions
 public class CertificateSettings
 {
   public string? Path { get; set; }
-  public string? KeyPath { get; set; }
+  //public string? KeyPath { get; set; } = null; // not sure if this is needed
   public string? Password { get; set; }
 }

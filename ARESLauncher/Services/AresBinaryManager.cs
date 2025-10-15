@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
+using ARESLauncher.Models.AppSettings;
 using ARESLauncher.Services.Configuration;
 using ARESLauncher.Tools;
 using Microsoft.Extensions.Logging;
@@ -34,8 +35,8 @@ public class AresBinaryManager : IAresBinaryManager
   }
 
   public SemanticVersion? CurrentVersion { get; private set; }
-  public AppSettings? ServiceSettings { get; private set; }
-  public AppSettings? UiSettings { get; private set; }
+  public AppSettingsService? ServiceSettings { get; private set; }
+  public AppSettingsUi? UiSettings { get; private set; }
   public AresSource? CurrentSource { get; private set; }
   public SemanticVersion[] AvailableVersions { get; private set; } = [];
 
@@ -53,23 +54,23 @@ public class AresBinaryManager : IAresBinaryManager
   public async Task Refresh()
   {
     // Load appsettings (if present)
-    UiSettings = TryLoadAppSettings(Path.Combine(_configurationService.Current.UiDataPath, "appsettings.json"));
-    ServiceSettings = TryLoadAppSettings(Path.Combine(_configurationService.Current.ServiceDataPath, "appsettings.json"));
+    UiSettings = TryLoadAppSettings<AppSettingsUi>(Path.Combine(_configurationService.Current.UiBinaryPath, "appsettings.json"));
+    ServiceSettings = TryLoadAppSettings<AppSettingsService>(Path.Combine(_configurationService.Current.ServiceBinaryPath, "appsettings.json"));
 
     if(_logger.IsEnabled(LogLevel.Debug))
     {
       if(UiSettings is null)
       {
-        _logger.LogDebug("Ui settings not found in {}", _configurationService.Current.UiDataPath);
+        _logger.LogDebug("Ui settings not found in {}", _configurationService.Current.UiBinaryPath);
       }
       if(ServiceSettings is null)
       {
-        _logger.LogDebug("Service settings not found in {}", _configurationService.Current.ServiceDataPath);
+        _logger.LogDebug("Service settings not found in {}", _configurationService.Current.ServiceBinaryPath);
       }
     }
 
-    var uiMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.UiDataPath);
-    var serviceMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.ServiceDataPath);
+    var uiMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.UiBinaryPath);
+    var serviceMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.ServiceBinaryPath);
     var metadata = uiMetadata ?? serviceMetadata;
 
     if(uiMetadata is not null && serviceMetadata is not null)
@@ -110,13 +111,13 @@ public class AresBinaryManager : IAresBinaryManager
   public void SetUiDataPath(Uri path)
   {
     var newPath = ToLocalPath(path);
-    _configurationService.Update(cfg => cfg.UiDataPath = newPath);
+    _configurationService.Update(cfg => cfg.UiBinaryPath = newPath);
   }
 
   public void SetServiceDataPath(Uri uri)
   {
     var newPath = ToLocalPath(uri);
-    _configurationService.Update(cfg => cfg.ServiceDataPath = newPath);
+    _configurationService.Update(cfg => cfg.ServiceBinaryPath = newPath);
   }
 
   private SemanticVersion? TryGetInstalledVersion()
@@ -190,14 +191,14 @@ public class AresBinaryManager : IAresBinaryManager
     }
   }
 
-  private static AppSettings? TryLoadAppSettings(string path)
+  private static T? TryLoadAppSettings<T>(string path) where T : AppSettingsBase
   {
     if(!File.Exists(path)) return null;
     try
     {
       var json = File.ReadAllText(path);
       if(string.IsNullOrWhiteSpace(json)) return null;
-      return JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
+      return JsonSerializer.Deserialize<T>(json, SerializerOptions);
     }
     catch
     {

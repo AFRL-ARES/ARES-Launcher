@@ -8,12 +8,12 @@ public class ExecutableGetter(IAppConfigurationService _configurationService) : 
 {
   public string? GetUiExecutablePath()
   {
-    return GetPath(_configurationService.Current.UiDataPath, "UI");
+    return GetPath(_configurationService.Current.UiBinaryPath, "UI");
   }
 
   public string? GetServiceExecutablePath()
   {
-    return GetPath(_configurationService.Current.ServiceDataPath, "AresService");
+    return GetPath(_configurationService.Current.ServiceBinaryPath, "AresService");
   }
 
   private string? GetPath(string dataPath, string name)

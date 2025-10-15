@@ -48,8 +48,8 @@ public class AresUpdater : IAresUpdater
       // We must be up to date
       return;
 
-    var uiDir = _configurationService.Current.UiDataPath;
-    var serviceDir = _configurationService.Current.ServiceDataPath;
+    var uiDir = _configurationService.Current.UiBinaryPath;
+    var serviceDir = _configurationService.Current.ServiceBinaryPath;
 
     _updateStepSubject.OnNext("Cleaning up the previous version.");
     Directory.Delete(uiDir, true);

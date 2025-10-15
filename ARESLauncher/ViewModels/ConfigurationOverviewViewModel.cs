@@ -69,8 +69,8 @@ public class ConfigurationOverviewViewModel : ViewModelBase
   {
     var current = _configurationService.Current;
 
-    UiDataPath = current.UiDataPath;
-    ServiceDataPath = current.ServiceDataPath;
+    UiDataPath = current.UiBinaryPath;
+    ServiceDataPath = current.ServiceBinaryPath;
     SqliteDatabasePath = current.SqliteDatabasePath;
     DatabaseProvider = current.DatabaseProvider.ToString();
     DefaultRepositoryDisplay = $"{current.CurrentAresRepo.Owner}/{current.CurrentAresRepo.Repo}";

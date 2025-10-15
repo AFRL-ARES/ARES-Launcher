@@ -131,8 +131,8 @@ public class ConfigurationEditorViewModel : ViewModelBase
   {
     _configurationService.Update(configuration =>
     {
-      configuration.UiDataPath = EditableUiDataPath;
-      configuration.ServiceDataPath = EditableServiceDataPath;
+      configuration.UiBinaryPath = EditableUiDataPath;
+      configuration.ServiceBinaryPath = EditableServiceDataPath;
       configuration.SqliteDatabasePath = EditableSqliteDatabasePath;
       configuration.DatabaseProvider = EditableDatabaseProvider;
       configuration.GitToken = EditableGitToken;
@@ -156,8 +156,8 @@ public class ConfigurationEditorViewModel : ViewModelBase
   {
     var current = _configurationService.Current;
 
-    EditableUiDataPath = current.UiDataPath;
-    EditableServiceDataPath = current.ServiceDataPath;
+    EditableUiDataPath = current.UiBinaryPath;
+    EditableServiceDataPath = current.ServiceBinaryPath;
     EditableSqliteDatabasePath = current.SqliteDatabasePath;
     EditableDatabaseProvider = current.DatabaseProvider;
     EditableDefaultRepoOwner = current.CurrentAresRepo.Owner;

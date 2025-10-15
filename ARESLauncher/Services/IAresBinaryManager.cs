@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
+using ARESLauncher.Models.AppSettings;
 using NuGet.Versioning;
 
 namespace ARESLauncher.Services;
@@ -21,12 +22,12 @@ public interface IAresBinaryManager
   /// <summary>
   ///   The appsettings for the service
   /// </summary>
-  AppSettings? ServiceSettings { get; }
+  AppSettingsService? ServiceSettings { get; }
 
   /// <summary>
   ///   The appsettings for the UI
   /// </summary>
-  AppSettings? UiSettings { get; }
+  AppSettingsUi? UiSettings { get; }
 
   /// <summary>
   ///   What's the source of the current ARES binaries.

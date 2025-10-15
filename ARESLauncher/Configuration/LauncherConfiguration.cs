@@ -14,8 +14,10 @@ public class LauncherConfiguration
   public AresSource CurrentAresRepo { get; set; } = new AresSource("AFRL-ARES", "ARES");
 
   public AresSource[] AvailableAresRepos { get; set; } = [new AresSource("AFRL-ARES", "ARES")];
-  public string UiDataPath { get; set; } = Path.Combine(_appPath, "Data", "UI");
-  public string ServiceDataPath { get; set; } = Path.Combine(_appPath, "Data", "Service");
+  public string UiBinaryPath { get; set; } = Path.Combine(_appPath, "Binaries", "UI");
+  public string ServiceBinaryPath { get; set; } = Path.Combine(_appPath, "Binaries", "Service");
+
+  public string AresDataPath { get; set; } = Path.Combine(_appPath, "Data");
   public string SqliteDatabasePath { get; set; } = Path.Combine(_appPath, "Data", "ares_database.db");
   public string SqlServerConnectionString { get; set; } = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=ARES;Integrated Security=True;Pooling=False;";
 

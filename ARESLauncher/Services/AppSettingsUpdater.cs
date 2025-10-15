@@ -4,6 +4,7 @@ using ARESLauncher.Services.Configuration;
 using ARESLauncher.Models;
 using ARESLauncher.Tools;
 using ARESLauncher.Configuration;
+using ARESLauncher.Models.AppSettings;
 
 namespace ARESLauncher.Services;
 
@@ -11,36 +12,72 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
 {
   public void Update(AresComponent component)
   {
-    var path = component switch
+    switch (component)
     {
-      AresComponent.Ui => _configurationService.Current.UiDataPath,
-      AresComponent.Service => _configurationService.Current.ServiceDataPath,
-      _ => throw new ArgumentOutOfRangeException(nameof(component), component, null)
-    };
+      case AresComponent.Ui:
+        UpdateUi();
+        return;
+      case AresComponent.Service: 
+        UpdateService();
+        return;
+      default:
+        throw new ArgumentOutOfRangeException(nameof(component), component, null);
+    }
+  }
 
+  private void UpdateUi()
+  {
+    var path = _configurationService.Current.UiBinaryPath;
     path = Path.Combine(path, "appsettings.json");
-    AppSettingsHelper.Update(path, appSettings =>
-    {
-      appSettings.DatabaseProvider = _configurationService.Current.DatabaseProvider;
-      appSettings.ConnectionStrings[DatabaseProvider.Sqlite] = $"Data Source={_configurationService.Current.SqliteDatabasePath}";
-      appSettings.ConnectionStrings[DatabaseProvider.SqlServer] = _configurationService.Current.SqlServerConnectionString;
-      appSettings.ConnectionStrings[DatabaseProvider.Postgres] = _configurationService.Current.PostgresConnectionString;
 
-      UpdateKestrel(appSettings, component, _configurationService.Current);
+    var serviceUri = new Uri(_configurationService.Current.ServiceEndpoint);
+    
+    AppSettingsHelper.Update<AppSettingsUi>(path, appSettings =>
+    {
+      ApplyCommonSettings(appSettings);
+      appSettings.RemoteServiceSettings ??= new RemoteServiceSettings();
+      appSettings.RemoteServiceSettings.ServerHost = serviceUri.Host;
+      appSettings.RemoteServiceSettings.ServerPort = serviceUri.Port;
+      UpdateKestrel(appSettings, AresComponent.Ui, _configurationService.Current);
+    });
+  }
+  
+  private void UpdateService()
+  {
+    var path = _configurationService.Current.ServiceBinaryPath;
+    path = Path.Combine(path, "appsettings.json");
+
+    AppSettingsHelper.Update<AppSettingsService>(path, appSettings =>
+    {
+      ApplyCommonSettings(appSettings);
+      appSettings.AresDataPath = _configurationService.Current.AresDataPath;
+      UpdateKestrel(appSettings, AresComponent.Service, _configurationService.Current);
     });
   }
 
-  private static void UpdateKestrel(AppSettings settings, AresComponent component, LauncherConfiguration configuration)
+  private void ApplyCommonSettings(AppSettingsBase appSettings)
+  {
+    appSettings.DatabaseProvider = _configurationService.Current.DatabaseProvider;
+    appSettings.ConnectionStrings[DatabaseProvider.Sqlite] = $"Data Source={_configurationService.Current.SqliteDatabasePath}";
+    appSettings.ConnectionStrings[DatabaseProvider.SqlServer] = _configurationService.Current.SqlServerConnectionString;
+    appSettings.ConnectionStrings[DatabaseProvider.Postgres] = _configurationService.Current.PostgresConnectionString;
+      
+    appSettings.CertificateSettings ??= new CertificateSettings();
+    appSettings.CertificateSettings.Path = _configurationService.Current.CertificatePath;
+    appSettings.CertificateSettings.Password = _configurationService.Current.CertificatePassword;
+  }
+
+  private static void UpdateKestrel(AppSettingsBase settingsBase, AresComponent component, LauncherConfiguration configuration)
   {
     var endpoint = component == AresComponent.Ui ? configuration.UiEndpoint : configuration.ServiceEndpoint;
 
     var uri = new Uri(endpoint);
 
-    settings.Kestrel ??= new KestrelOptions();
+    settingsBase.Kestrel ??= new KestrelOptions();
 
-    settings.Kestrel.Endpoints ??= new EndpointsOptions();
+    settingsBase.Kestrel.Endpoints ??= new EndpointsOptions();
 
-    var endpoints = settings.Kestrel.Endpoints;
+    var endpoints = settingsBase.Kestrel.Endpoints;
 
     if(uri.Scheme == Uri.UriSchemeHttp)
     {

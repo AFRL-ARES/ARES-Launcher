@@ -1,48 +1,57 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ARESLauncher.Models;
+using ARESLauncher.Models.AppSettings;
 
 namespace ARESLauncher.Tools;
 
 public static class AppSettingsHelper
 {
-  private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
-
-  public static void Update(string path, Action<AppSettings> updateCallback)
+  private static readonly JsonSerializerOptions SerializerOptions = new()
   {
-    var existingConfig = LoadConfiguration(path);
+    WriteIndented = true, 
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+  };
+
+  public static void Update<T>(string path, Action<T> updateCallback) where T : AppSettingsBase
+  {
+    var existingConfig = LoadConfiguration<T>(path);
     updateCallback(existingConfig);
     PersistCurrentInternal(existingConfig, path);
   }
 
-  private static AppSettings LoadConfiguration(string path)
+  private static T LoadConfiguration<T>(string path) where T : AppSettingsBase
   {
-    if (!File.Exists(path)) return new AppSettings();
+    if (!File.Exists(path))
+      return Activator.CreateInstance<T>();
 
     try
     {
       var json = File.ReadAllText(path);
-      if (string.IsNullOrWhiteSpace(json)) return new AppSettings();
+      if (string.IsNullOrWhiteSpace(json)) 
+        return Activator.CreateInstance<T>();
 
-      var configuration = JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
-      return configuration ?? new AppSettings();
+      var configuration = JsonSerializer.Deserialize<T>(json, SerializerOptions);
+      return configuration ?? Activator.CreateInstance<T>();
     }
     catch (JsonException)
     {
-      return new AppSettings();
+      return Activator.CreateInstance<T>();
     }
     catch (IOException)
     {
-      return new AppSettings();
+      return Activator.CreateInstance<T>();
     }
   }
 
-  private static void PersistCurrentInternal(AppSettings configuration, string path)
+  private static void PersistCurrentInternal<T>(T configuration, string path) where T : AppSettingsBase
   {
     var directory = Path.GetDirectoryName(path);
     if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
+    // Use runtime type to include derived properties when serializing
     var json = JsonSerializer.Serialize(configuration, SerializerOptions);
     File.WriteAllText(path, json);
   }
