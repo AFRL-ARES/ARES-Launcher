@@ -31,15 +31,13 @@ public class AresBinaryManager : IAresBinaryManager
     _downloader = downloader;
     _executableGetter = executableGetter;
     _logger = logger;
-
-    AvailableVersions = [];
   }
 
   public SemanticVersion? CurrentVersion { get; private set; }
   public AppSettings? ServiceSettings { get; private set; }
   public AppSettings? UiSettings { get; private set; }
   public AresSource? CurrentSource { get; private set; }
-  public SemanticVersion[] AvailableVersions { get; private set; }
+  public SemanticVersion[] AvailableVersions { get; private set; } = [];
 
   public bool UpdateAvailable
   {
@@ -123,19 +121,33 @@ public class AresBinaryManager : IAresBinaryManager
 
   private SemanticVersion? TryGetInstalledVersion()
   {
-    string?[] candidates =
-    [
-      _executableGetter.GetUiExecutablePath(),
-      _executableGetter.GetServiceExecutablePath()
-    ];
+    string? uiPath = _executableGetter.GetUiExecutablePath();
+    string? servicePath = _executableGetter.GetServiceExecutablePath();
 
-    foreach(var candidate in candidates)
+    string?[] candidates = [ uiPath, servicePath ];
+
+    // 1) Try to read managed assembly version from the given paths or sibling .dll files
+    foreach (var candidate in candidates)
     {
-      if(string.IsNullOrWhiteSpace(candidate) || !File.Exists(candidate)) continue;
+      if (string.IsNullOrWhiteSpace(candidate)) continue;
 
-      // Prefer managed assembly version if available
-      var semver = TryGetVersionFromAssembly(candidate) ?? TryGetVersionFromFileInfo(candidate);
-      if(semver is not null) return semver;
+      // Try exact path first
+      if (File.Exists(candidate))
+      {
+        var semver = TryGetVersionFromAssembly(candidate) ?? TryGetVersionFromFileInfo(candidate);
+        if (semver is not null) return semver;
+      }
+
+      // If no extension (common on Linux/macOS), try sibling .dll (framework-dependent publish)
+      if (Path.GetExtension(candidate) == string.Empty)
+      {
+        var dllCandidate = candidate + ".dll";
+        if (File.Exists(dllCandidate))
+        {
+          var semver = TryGetVersionFromAssembly(dllCandidate);
+          if (semver is not null) return semver;
+        }
+      }
     }
 
     return null;

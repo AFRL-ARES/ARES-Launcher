@@ -28,6 +28,12 @@ internal static class CertificateHelper
 
     var cert = req.CreateSelfSigned(DateTimeOffset.Now, DateTimeOffset.Now.AddYears(50));
 
+    var dir = Path.GetDirectoryName(certPath);
+    if (dir is not null)
+    {
+      Directory.CreateDirectory(dir);
+    }
+    
     await File.WriteAllBytesAsync(certPath, cert.Export(X509ContentType.Pfx, certPassword));
 
     return certPath;
@@ -79,26 +85,53 @@ internal static class CertificateHelper
 
   private static async Task<bool> MacOsCertExists(string certPath, string certPassword)
   {
-    var tempPemPath = Path.GetTempFileName();
+    // Build the reference hash directly from the PFX (no temp PEM needed)
+    using var desiredCert = new X509Certificate2(certPath, certPassword);
+    var desiredHash = desiredCert.GetCertHashString(HashAlgorithmName.SHA256);
 
-    try
+    // Dump all trusted certs in user keychain
+    var keychainPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+      "Library", "Keychains", "login.keychain-db");
+
+    // Prefer explicit keychain path if it exists; otherwise search default keychains
+    var cmd = Cli.Wrap("security");
+    if (File.Exists(keychainPath))
     {
-      // Convert PFX to PEM for comparison
-      await ConvertPfxToPemAsync(certPath, certPassword, tempPemPath);
-
-      // Dump all trusted certs in user keychain
-      var result = await Cli.Wrap("security")
-          .WithArguments("find-certificate -a -p ~/Library/Keychains/login.keychain-db")
-          .ExecuteBufferedAsync();
-
-      var currentCert = await File.ReadAllTextAsync(tempPemPath);
-      return result.StandardOutput.Contains(currentCert.Trim());
+      cmd = cmd.WithArguments(args => args
+        .Add("find-certificate")
+        .Add("-a")
+        .Add("-p")
+        .Add(keychainPath));
     }
-    finally
+    else
     {
-      if(File.Exists(tempPemPath))
-        File.Delete(tempPemPath);
+      cmd = cmd.WithArguments(args => args
+        .Add("find-certificate")
+        .Add("-a")
+        .Add("-p"));
     }
+
+    var result = await cmd.ExecuteBufferedAsync();
+
+    var output = result.StandardOutput;
+    if (string.IsNullOrWhiteSpace(output)) return false;
+
+    foreach (var pem in ExtractPemCertificates(output))
+    {
+      try
+      {
+        using var cert = X509Certificate2.CreateFromPem(pem);
+        var hash = cert.GetCertHashString(HashAlgorithmName.SHA256);
+        if (string.Equals(hash, desiredHash, StringComparison.OrdinalIgnoreCase))
+          return true;
+      }
+      catch
+      {
+        // ignore malformed blocks and continue
+      }
+    }
+
+    return false;
   }
 
   private static async Task AddMacOsCert(string certPath, string certPassword)
@@ -111,9 +144,9 @@ internal static class CertificateHelper
       // Convert PFX to PEM (public cert only)
       await ConvertPfxToPemAsync(certPath, certPassword, pemPath);
 
-      await Cli.Wrap("security")
+      var result = await Cli.Wrap("security")
           .WithArguments($"add-trusted-cert -d -r trustRoot -k \"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/Library/Keychains/login.keychain-db\" \"{pemPath}\"")
-          .ExecuteAsync();
+          .ExecuteBufferedAsync();
     }
     finally
     {
@@ -128,9 +161,39 @@ internal static class CertificateHelper
 
   private static bool LinuxCertExists(string certPath)
   {
-    var fileName = Path.GetFileNameWithoutExtension(certPath) + ".crt";
-    var destPath = $"/usr/local/share/ca-certificates/{fileName}";
-    return File.Exists(destPath);
+    try
+    {
+      using var desiredCert = new X509Certificate2(certPath);
+      var desiredHash = desiredCert.GetCertHashString(HashAlgorithmName.SHA256);
+
+      var dir = "/usr/local/share/ca-certificates";
+      if (!Directory.Exists(dir)) return false;
+
+      foreach (var path in Directory.EnumerateFiles(dir, "*.crt"))
+      {
+        try
+        {
+          var content = File.ReadAllText(path);
+          foreach (var pem in ExtractPemCertificates(content))
+          {
+            using var cert = X509Certificate2.CreateFromPem(pem);
+            var hash = cert.GetCertHashString(HashAlgorithmName.SHA256);
+            if (string.Equals(hash, desiredHash, StringComparison.OrdinalIgnoreCase))
+              return true;
+          }
+        }
+        catch
+        {
+          // skip unreadable or malformed files
+        }
+      }
+
+      return false;
+    }
+    catch
+    {
+      return false;
+    }
   }
 
   private static async Task AddLinuxCert(string certPath, string certPassword)
@@ -140,8 +203,14 @@ internal static class CertificateHelper
     {
       crtPath = Path.ChangeExtension(Path.GetTempFileName(), ".crt");
 
-      // Convert PFX to CRT (PEM) public cert only
-      await ConvertPfxToPemAsync(certPath, certPassword, crtPath);
+      // Create a clean PEM certificate from the PFX using managed APIs (no bag attributes)
+      using (var cert = new X509Certificate2(certPath, certPassword))
+      {
+        var der = cert.Export(X509ContentType.Cert);
+        var base64 = Convert.ToBase64String(der, Base64FormattingOptions.InsertLineBreaks);
+        var pem = $"-----BEGIN CERTIFICATE-----\n{base64}\n-----END CERTIFICATE-----\n";
+        await File.WriteAllTextAsync(crtPath, pem);
+      }
 
       var destPath = $"/usr/local/share/ca-certificates/{Path.GetFileName(crtPath)}";
 
@@ -171,5 +240,24 @@ internal static class CertificateHelper
     await Cli.Wrap("openssl")
         .WithArguments(arguments)
         .ExecuteAsync();
+  }
+
+  private static System.Collections.Generic.IEnumerable<string> ExtractPemCertificates(string pemBundle)
+  {
+    const string begin = "-----BEGIN CERTIFICATE-----";
+    const string end = "-----END CERTIFICATE-----";
+
+    int idx = 0;
+    while (true)
+    {
+      var start = pemBundle.IndexOf(begin, idx, StringComparison.Ordinal);
+      if (start < 0) yield break;
+      var finish = pemBundle.IndexOf(end, start, StringComparison.Ordinal);
+      if (finish < 0) yield break;
+      finish += end.Length;
+      var pem = pemBundle[start..finish];
+      yield return pem;
+      idx = finish;
+    }
   }
 }
