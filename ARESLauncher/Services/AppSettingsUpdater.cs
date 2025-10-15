@@ -22,7 +22,7 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
     AppSettingsHelper.Update(path, appSettings =>
     {
       appSettings.DatabaseProvider = _configurationService.Current.DatabaseProvider;
-      appSettings.ConnectionStrings[DatabaseProvider.Sqlite] = _configurationService.Current.SqliteDatabasePath;
+      appSettings.ConnectionStrings[DatabaseProvider.Sqlite] = $"Data Source={_configurationService.Current.SqliteDatabasePath}";
       appSettings.ConnectionStrings[DatabaseProvider.SqlServer] = _configurationService.Current.SqlServerConnectionString;
       appSettings.ConnectionStrings[DatabaseProvider.Postgres] = _configurationService.Current.PostgresConnectionString;
 
