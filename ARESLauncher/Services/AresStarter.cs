@@ -20,6 +20,7 @@ public class AresStarter : IAresStarter
   private Task _serviceTask = Task.CompletedTask;
 
   private CancellationTokenSource _cancellationTokenSource = new();
+  private int _stopInitiated = 0;
 
   public AresStarter(IExecutableGetter executableGetter, ILogger<AresStarter> logger)
   {
@@ -58,16 +59,53 @@ public class AresStarter : IAresStarter
     var uiDir = Path.GetDirectoryName(uiExecutable) ?? "";
 
     _cancellationTokenSource = new CancellationTokenSource();
+    _stopInitiated = 0;
 
     _serviceTask = Cli.Wrap(serviceExecutable)
       .WithWorkingDirectory(serviceDir)
       .ExecuteAsync(_cancellationTokenSource.Token)
       .Task;
 
+    _serviceTask.ContinueWith(t =>
+    {
+      if (t.IsFaulted)
+      {
+        _logger.LogError(t.Exception, "Service task faulted; stopping ARES.");
+        TriggerStopOnce();
+      }
+      else if (!t.IsCanceled)
+      {
+        _logger.LogInformation("Service task completed; stopping ARES.");
+        TriggerStopOnce();
+      }
+    }, TaskScheduler.Default);
+    
     _uiTask = Cli.Wrap(uiExecutable)
       .WithWorkingDirectory(uiDir)
       .ExecuteAsync(_cancellationTokenSource.Token)
       .Task;
+
+    _uiTask.ContinueWith(t =>
+    {
+      if (t.IsFaulted)
+      {
+        _logger.LogError(t.Exception, "UI task faulted; stopping ARES.");
+        TriggerStopOnce();
+      }
+      else if (!t.IsCanceled)
+      {
+        _logger.LogInformation("UI task completed; stopping ARES.");
+        TriggerStopOnce();
+      }
+    }, TaskScheduler.Default);
+
+    void TriggerStopOnce()
+    {
+      if (Interlocked.Exchange(ref _stopInitiated, 1) == 0)
+      {
+        _ = Stop();
+      }
+    }
 
     Task.WhenAll(_serviceTask, _uiTask)
       .ContinueWith(_ => _aresRunningSubject.OnNext(false), TaskScheduler.Default);
@@ -82,10 +120,10 @@ public class AresStarter : IAresStarter
     {
       await Task.WhenAll(_serviceTask, _uiTask);
     }
-    catch(OperationCanceledException)
+    catch (OperationCanceledException)
     {
     }
-    catch(CommandExecutionException e)
+    catch (CommandExecutionException e)
     {
       _logger.LogError("Error from execution: {Exception}", e);
     }
