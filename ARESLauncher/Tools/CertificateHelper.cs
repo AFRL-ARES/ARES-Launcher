@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -12,28 +13,68 @@ namespace ARESLauncher.Tools;
 
 internal static class CertificateHelper
 {
+  /// <summary>
+  /// This method generates a server side certificate so that the ares service can declare its
+  /// validity. It's also used by the UI to validate its asp.net service as well.
+  /// We also use this for grpc client/server comms. Ideally maybe it should be separate certs
+  /// (especially client vs service) but for the sake of convenience, we just leav it as is.
+  /// </summary>
   public static async Task<string> GenerateCertificate(string certPath, string certPassword)
   {
-    if(File.Exists(certPath))
+    if (File.Exists(certPath))
       return certPath;
 
     using var rsa = RSA.Create(2048);
-    var req = new CertificateRequest("CN=localhost", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-    req.CertificateExtensions.Add(
-        new X509BasicConstraintsExtension(false, false, 0, false));
-    req.CertificateExtensions.Add(
-        new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
-    req.CertificateExtensions.Add(
-        new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
 
-    var cert = req.CreateSelfSigned(DateTimeOffset.Now, DateTimeOffset.Now.AddYears(50));
+    // Subject (CN is largely ignored for name matching now; SANs below are what matter)
+    var subject = new X500DistinguishedName("CN=localhost");
+
+    var req = new CertificateRequest(subject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+    // Basic constraints: not a CA
+    req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+
+    // Key usage appropriate for TLS server certs
+    req.CertificateExtensions.Add(new X509KeyUsageExtension(
+        X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, // for RSA TLS
+        false));
+
+    // Enhanced Key Usage: Server Authentication
+    var eku = new OidCollection { new Oid("1.3.6.1.5.5.7.3.1") }; // Server Auth
+    req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(eku, false));
+
+    // Subject Key Identifier
+    req.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(req.PublicKey, false));
+
+    // Subject Alternative Names (what modern clients validate against)
+    var san = new SubjectAlternativeNameBuilder();
+    san.AddDnsName("localhost");
+    san.AddIpAddress(IPAddress.Loopback);      // 127.0.0.1
+    san.AddIpAddress(IPAddress.IPv6Loopback);  // ::1
+    req.CertificateExtensions.Add(san.Build());
+
+    // Validity window (UTC). Slight backdate to avoid clock skew issues.
+    var notBefore = DateTimeOffset.UtcNow.AddMinutes(-5);
+    var notAfter  = notBefore.AddYears(5);
+
+    using var cert = req.CreateSelfSigned(notBefore, notAfter);
+
+    try
+    {
+      cert.FriendlyName = "ARES Certificate (localhost)";
+    }
+    catch
+    {
+      // FriendlyName may throw on non-Windows; safe to ignore.
+    }
 
     var dir = Path.GetDirectoryName(certPath);
     if (dir is not null)
     {
       Directory.CreateDirectory(dir);
     }
-    
+
+    // Export as PFX including the private key
     await File.WriteAllBytesAsync(certPath, cert.Export(X509ContentType.Pfx, certPassword));
 
     return certPath;

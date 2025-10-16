@@ -18,6 +18,7 @@
 				<StackPanel Grid.Row="1">
 					<TextBlock Text="{Binding AresPresent}"></TextBlock>
 					<TextBlock Text="{Binding DatabaseStatus}"></TextBlock>
+					<TextBlock Text="Ares is running" IsVisible="{Binding AresRunning}"></TextBlock>
 					<Button Command="{Binding StartAres}">Start</Button>
 					<Button Command="{Binding StopAres}">Stop</Button>
 					<Button Command="{Binding Refresh}">Refresh</Button>

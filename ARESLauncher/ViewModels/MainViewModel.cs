@@ -38,6 +38,8 @@ public partial class MainViewModel : ViewModelBase
     StartAres = ReactiveCommand.Create(aresStarter.Start);
     StopAres = ReactiveCommand.CreateFromTask(aresStarter.Stop);
     AresUpdate = ReactiveCommand.CreateFromTask(AwesUpdayt);
+
+    aresStarter.AresRunning.BindTo(this, vm => vm.AresRunning);
   }
 
   public ConfigurationOverviewViewModel Overview { get; }
@@ -63,6 +65,9 @@ public partial class MainViewModel : ViewModelBase
 
   [Reactive]
   public partial DatabaseStatus DatabaseStatus { get; private set; }
+  
+  [Reactive]
+  public partial bool AresRunning { get; private set; }
 
   public ReactiveCommand<Unit, Unit> StartAres { get; }
 
