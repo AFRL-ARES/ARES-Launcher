@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
-using ARESLauncher.Services.Configuration;
 using ARESLauncher.Models;
+using ARESLauncher.Services.Configuration;
 using ARESLauncher.Tools;
 using NuGet.Versioning;
 using Octokit;
@@ -94,16 +94,18 @@ public class AresDownloader(IAppConfigurationService configurationService) : IAr
   private static ReleaseAsset? SelectAssetForComponent(Release release, AresComponent component)
   {
     if (release.Assets is null || release.Assets.Count == 0) return null;
+    var os = OsBundleNameGetter.GetName();
 
     var keywords = component switch
     {
-      AresComponent.Ui => new[] { "ui", "desktop" },
-      AresComponent.Service => new[] { "service", "server" },
+      AresComponent.Ui => new[] { "ui", os },
+      AresComponent.Service => new[] { "service", os },
+      AresComponent.Both => new[] { os },
       _ => Array.Empty<string>()
     };
 
     var asset = release.Assets.FirstOrDefault(a =>
-      keywords.Any(keyword => a.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true));
+      keywords.All(keyword => a.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true));
 
     if (asset is not null) return asset;
 

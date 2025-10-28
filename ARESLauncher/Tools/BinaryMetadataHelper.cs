@@ -48,8 +48,7 @@ public static class BinaryMetadataHelper
     try
     {
       var json = File.ReadAllText(path);
-      if (string.IsNullOrWhiteSpace(json)) return null;
-      return JsonSerializer.Deserialize<AresBinaryMetadata>(json, SerializerOptions);
+      return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<AresBinaryMetadata>(json, SerializerOptions);
     }
     catch (Exception)
     {

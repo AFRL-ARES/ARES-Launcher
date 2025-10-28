@@ -13,17 +13,18 @@ namespace ARESLauncher.Services;
 
 public class AresUpdater : IAresUpdater
 {
-  private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IAppSettingsUpdater _appSettingsUpdater;
+  private readonly IAresBinaryManager _aresBinaryManager;
   private readonly ICertificateManager _certificateManager;
-  private readonly ILogger<AresUpdater> _logger;
   private readonly IAppConfigurationService _configurationService;
   private readonly IAresDownloader _downloader;
+  private readonly ILogger<AresUpdater> _logger;
   private readonly ISubject<double> _updateProgressSubject = new BehaviorSubject<double>(0);
   private readonly ISubject<string> _updateStepSubject = new BehaviorSubject<string>("");
 
   public AresUpdater(IAresDownloader downloader, IAppConfigurationService configurationService,
-    IAresBinaryManager aresBinaryManager, IAppSettingsUpdater appSettingsUpdater, ICertificateManager certificateManager, ILogger<AresUpdater> logger)
+    IAresBinaryManager aresBinaryManager, IAppSettingsUpdater appSettingsUpdater,
+    ICertificateManager certificateManager, ILogger<AresUpdater> logger)
   {
     _downloader = downloader;
     _configurationService = configurationService;
@@ -43,19 +44,61 @@ public class AresUpdater : IAresUpdater
 
   public async Task Update(SemanticVersion version)
   {
-    if(version == _aresBinaryManager.CurrentVersion &&
+    if (version == _aresBinaryManager.CurrentVersion &&
         _configurationService.Current.CurrentAresRepo == _aresBinaryManager.CurrentSource)
       // We must be up to date
       return;
 
     var uiDir = _configurationService.Current.UiBinaryPath;
     var serviceDir = _configurationService.Current.ServiceBinaryPath;
+    var rootDir = _configurationService.Current.BinariesRoot;
 
     _updateStepSubject.OnNext("Cleaning up the previous version.");
-    Directory.Delete(uiDir, true);
-    Directory.Delete(serviceDir, true);
+
+    if (Directory.Exists(uiDir))
+      Directory.Delete(uiDir, true);
+    if (Directory.Exists(serviceDir))
+      Directory.Delete(serviceDir, true);
+    if (Directory.Exists(rootDir))
+      Directory.Delete(rootDir, true);
 
     var source = _configurationService.Current.CurrentAresRepo;
+
+    if (source.Bundle)
+      await DownloadBundle(source, version, rootDir);
+    else
+      await DownloadIndividualComponents(source, version, uiDir, serviceDir);
+
+    await _aresBinaryManager.Refresh();
+    _appSettingsUpdater.UpdateAll();
+    await _certificateManager.Update();
+  }
+
+  public IObservable<string> UpdateStep { get; }
+  public IObservable<double> UpdateProgress { get; }
+
+  private async Task DownloadBundle(AresSource source, SemanticVersion version, string dest)
+  {
+    var tempPath = Path.GetTempPath();
+    try
+    {
+      _updateStepSubject.OnNext("Downloading the bundle.");
+      var bundleDest = await _downloader.Download(source, version, AresComponent.Both, tempPath,
+        new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
+      _updateStepSubject.OnNext("Unpacking the bundle");
+      await Unpacker.Unpack(bundleDest, dest);
+      BinaryMetadataHelper.WriteMetadata(dest, source, version);
+    }
+    catch (InvalidOperationException e)
+    {
+      _logger.LogError("Failed to acquire the combined bundle. {}", e);
+      throw;
+    }
+  }
+
+  private async Task DownloadIndividualComponents(AresSource source, SemanticVersion version, string uiDir,
+    string serviceDir)
+  {
     var tempPath = Path.GetTempPath();
     try
     {
@@ -87,12 +130,5 @@ public class AresUpdater : IAresUpdater
       _logger.LogError("Failed to acquire the Service. {}", e);
       throw;
     }
-
-    await _aresBinaryManager.Refresh();
-    _appSettingsUpdater.UpdateAll();
-    await _certificateManager.Update();
   }
-
-  public IObservable<string> UpdateStep { get; }
-  public IObservable<double> UpdateProgress { get; }
 }
