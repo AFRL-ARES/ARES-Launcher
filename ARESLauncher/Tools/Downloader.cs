@@ -3,14 +3,22 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
+using System.Net.Http.Headers;
 
 namespace ARESLauncher.Tools;
 
 public static class Downloader
 {
-  public static async Task<DownloadResult> Download(Uri source, string destination, IProgress<double>? progress = null)
+  public static async Task<DownloadResult> Download(Uri source, string destination, string? authToken = null, IProgress<double>? progress = null)
   {
     using var client = new HttpClient();
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("ARESLauncher/1.0");
+    if (!string.IsNullOrEmpty(authToken))
+    {
+      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", authToken);
+    }
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/octet-stream");
+
     using var response = await client.GetAsync(source, HttpCompletionOption.ResponseHeadersRead);
 
     if (!response.IsSuccessStatusCode)

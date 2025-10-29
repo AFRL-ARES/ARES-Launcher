@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
     collection.AddSingleton<IAppConfigurationService, JsonAppConfigurationService>();
     collection.AddSingleton<IAppSettingsUpdater, AppSettingsUpdater>();
     collection.AddSingleton<IAresBinaryManager, AresBinaryManager>();
-    collection.AddSingleton<IAresDownloader, AresDownloader>();
+    collection.AddSingleton<IAresDownloader, AresGithubDownloader>();
     collection.AddSingleton<IAresUpdater, AresUpdater>();
     collection.AddSingleton<IAresStarter, AresStarter>();
     collection.AddSingleton<IDatabaseManager, DatabaseManager>();

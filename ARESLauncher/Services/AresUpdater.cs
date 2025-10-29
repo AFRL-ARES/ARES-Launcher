@@ -14,82 +14,106 @@ namespace ARESLauncher.Services;
 public class AresUpdater : IAresUpdater
 {
   private readonly IAppSettingsUpdater _appSettingsUpdater;
-  private readonly IAresBinaryManager _aresBinaryManager;
   private readonly ICertificateManager _certificateManager;
+  private readonly IDatabaseManager _databaseManager;
+  private readonly IAresBinaryManager _binaryManager;
   private readonly IAppConfigurationService _configurationService;
   private readonly IAresDownloader _downloader;
   private readonly ILogger<AresUpdater> _logger;
-  private readonly ISubject<double> _updateProgressSubject = new BehaviorSubject<double>(0);
-  private readonly ISubject<string> _updateStepSubject = new BehaviorSubject<string>("");
+  private readonly BehaviorSubject<double> _updateProgressSubject = new(0);
+  private readonly BehaviorSubject<string> _updateStepDescriptionSubject = new("");
+  private readonly BehaviorSubject<UpdateStep> _currentUpdateStepSubject = new(UpdateStep.Idle);
 
-  public AresUpdater(IAresDownloader downloader, IAppConfigurationService configurationService,
-    IAresBinaryManager aresBinaryManager, IAppSettingsUpdater appSettingsUpdater,
-    ICertificateManager certificateManager, ILogger<AresUpdater> logger)
+  public AresUpdater(IAresDownloader downloader,
+    IAppConfigurationService configurationService,
+    IAppSettingsUpdater appSettingsUpdater,
+    ICertificateManager certificateManager,
+    IDatabaseManager databaseManager,
+    IAresBinaryManager binaryManager,
+    ILogger<AresUpdater> logger)
   {
     _downloader = downloader;
     _configurationService = configurationService;
-    _aresBinaryManager = aresBinaryManager;
     _appSettingsUpdater = appSettingsUpdater;
     _certificateManager = certificateManager;
+    _databaseManager = databaseManager;
+    _binaryManager = binaryManager;
     _logger = logger;
-    UpdateStep = _updateStepSubject.AsObservable();
+    UpdateStepDescription = _updateStepDescriptionSubject.AsObservable();
     UpdateProgress = _updateProgressSubject.AsObservable();
   }
 
   public Task<SemanticVersion[]> GetAvailableVersions()
   {
     var source = _configurationService.Current.CurrentAresRepo;
-    return _downloader.GetAvailableVersions(source);
+    return _downloader.GetAvailableVersions(source, _configurationService.Current.GitToken);
   }
 
   public async Task Update(SemanticVersion version)
   {
-    if (version == _aresBinaryManager.CurrentVersion &&
-        _configurationService.Current.CurrentAresRepo == _aresBinaryManager.CurrentSource)
-      // We must be up to date
-      return;
-
     var uiDir = _configurationService.Current.UiBinaryPath;
     var serviceDir = _configurationService.Current.ServiceBinaryPath;
     var rootDir = _configurationService.Current.BinariesRoot;
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Checking version");
+    var versions = await GetAvailableVersions();
+    var currentVersion = _binaryManager.CurrentVersion;
+    if (currentVersion?.IsGreatest(versions) ?? false)
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("Already on the latest version.");
+      return;
+    }
 
-    _updateStepSubject.OnNext("Cleaning up the previous version.");
+    _updateStepDescriptionSubject.OnNext("Cleaning up the previous version.");
 
-    if (Directory.Exists(uiDir))
+    if(Directory.Exists(uiDir))
       Directory.Delete(uiDir, true);
-    if (Directory.Exists(serviceDir))
+    if(Directory.Exists(serviceDir))
       Directory.Delete(serviceDir, true);
-    if (Directory.Exists(rootDir))
+    if(Directory.Exists(rootDir))
       Directory.Delete(rootDir, true);
 
     var source = _configurationService.Current.CurrentAresRepo;
 
-    if (source.Bundle)
+    _currentUpdateStepSubject.OnNext(UpdateStep.Downloading);
+    if(source.Bundle)
       await DownloadBundle(source, version, rootDir);
     else
       await DownloadIndividualComponents(source, version, uiDir, serviceDir);
 
-    await _aresBinaryManager.Refresh();
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Updating settings");
     _appSettingsUpdater.UpdateAll();
+    _updateStepDescriptionSubject.OnNext("Updating certificates");
     await _certificateManager.Update();
+    _updateStepDescriptionSubject.OnNext("Ensuring database is up to date");
+    await _databaseManager.Refresh();
+    if(_databaseManager.DatabaseStatus != DatabaseStatus.UpToDate)
+    {
+      await _databaseManager.RunMigrations();
+    }
+    _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+    _updateStepDescriptionSubject.OnNext("");
   }
 
-  public IObservable<string> UpdateStep { get; }
+  public IObservable<string> UpdateStepDescription { get; }
   public IObservable<double> UpdateProgress { get; }
+  public IObservable<UpdateStep> CurrentUpdateStep { get; }
 
   private async Task DownloadBundle(AresSource source, SemanticVersion version, string dest)
   {
     var tempPath = Path.GetTempPath();
     try
     {
-      _updateStepSubject.OnNext("Downloading the bundle.");
-      var bundleDest = await _downloader.Download(source, version, AresComponent.Both, tempPath,
+      _updateStepDescriptionSubject.OnNext("Downloading the bundle.");
+      var bundleDest = await _downloader.Download(source, version, AresComponent.Both, tempPath, _configurationService.Current.GitToken,
         new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
-      _updateStepSubject.OnNext("Unpacking the bundle");
+      _updateStepDescriptionSubject.OnNext("Unpacking the bundle");
       await Unpacker.Unpack(bundleDest, dest);
       BinaryMetadataHelper.WriteMetadata(dest, source, version);
     }
-    catch (InvalidOperationException e)
+    catch(InvalidOperationException e)
     {
       _logger.LogError("Failed to acquire the combined bundle. {}", e);
       throw;
@@ -102,14 +126,14 @@ public class AresUpdater : IAresUpdater
     var tempPath = Path.GetTempPath();
     try
     {
-      _updateStepSubject.OnNext("Downloading the UI.");
-      var uiDest = await _downloader.Download(source, version, AresComponent.Ui, tempPath,
+      _updateStepDescriptionSubject.OnNext("Downloading the UI.");
+      var uiDest = await _downloader.Download(source, version, AresComponent.Ui, tempPath, _configurationService.Current.GitToken,
         new Progress<double>(pg => _updateProgressSubject.OnNext(pg / 2)));
-      _updateStepSubject.OnNext("Unpacking the UI");
+      _updateStepDescriptionSubject.OnNext("Unpacking the UI");
       await Unpacker.Unpack(uiDest, uiDir);
       BinaryMetadataHelper.WriteMetadata(uiDir, source, version);
     }
-    catch (InvalidOperationException e)
+    catch(InvalidOperationException e)
     {
       _logger.LogError("Failed to acquire the UI. {}", e);
       throw;
@@ -117,15 +141,15 @@ public class AresUpdater : IAresUpdater
 
     try
     {
-      _updateStepSubject.OnNext("Acquiring the Service.");
-      var serviceDest = await _downloader.Download(source, version, AresComponent.Service, tempPath,
+      _updateStepDescriptionSubject.OnNext("Acquiring the Service.");
+      var serviceDest = await _downloader.Download(source, version, AresComponent.Service, tempPath, _configurationService.Current.GitToken,
         new Progress<double>(pg => _updateProgressSubject.OnNext(.5 + pg / 2)));
 
-      _updateStepSubject.OnNext("Unpacking the Service.");
+      _updateStepDescriptionSubject.OnNext("Unpacking the Service.");
       await Unpacker.Unpack(serviceDest, serviceDir);
       BinaryMetadataHelper.WriteMetadata(serviceDir, source, version);
     }
-    catch (InvalidOperationException e)
+    catch(InvalidOperationException e)
     {
       _logger.LogError("Failed to acquire the Service. {}", e);
       throw;

@@ -7,9 +7,7 @@ using NuGet.Versioning;
 namespace ARESLauncher.Services;
 
 /// <summary>
-///   This service is in charge of the binaries for ARES.
-///   It's responsible for managing the data inside the UI and Service directories,
-///   as well as acquiring new versions when requested.
+///   This service is in charge of providing the information about ARES binaries.
 /// </summary>
 public interface IAresBinaryManager
 {
@@ -34,17 +32,6 @@ public interface IAresBinaryManager
   ///   Null if there are no binaries or source unknown.
   /// </summary>
   AresSource? CurrentSource { get; }
-
-  /// <summary>
-  ///   All available versions of ARES that the manager knows about.
-  ///   These are the versions that can be acquired.
-  /// </summary>
-  SemanticVersion[] AvailableVersions { get; }
-
-  /// <summary>
-  ///   Whether the latest version of ARES is newer than the currently installed one.
-  /// </summary>
-  bool UpdateAvailable { get; }
 
   /// <summary>
   ///   Refreshes its knowledge about the current and available versions of ARES.

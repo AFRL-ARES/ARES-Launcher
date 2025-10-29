@@ -11,13 +11,13 @@ using Octokit;
 
 namespace ARESLauncher.Services;
 
-public class AresDownloader(IAppConfigurationService configurationService) : IAresDownloader
+public class AresGithubDownloader() : IAresDownloader
 {
   private readonly ISubject<double> _progressSubject = new BehaviorSubject<double>(0);
 
-  public async Task<SemanticVersion[]> GetAvailableVersions(AresSource source)
+  public async Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken)
   {
-    var client = CreateClient();
+    var client = CreateClient(authToken);
     var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo);
 
     var versions = new List<SemanticVersion>();
@@ -33,17 +33,14 @@ public class AresDownloader(IAppConfigurationService configurationService) : IAr
   }
 
   public async Task<string> Download(AresSource source, SemanticVersion version, AresComponent component,
-    string destination, IProgress<double>? progress = null)
+    string destination, string? authToken, IProgress<double>? progress = null)
   {
-    var client = CreateClient();
+    var client = CreateClient(authToken);
     var release = await GetReleaseForVersion(client, source, version);
-    var asset = SelectAssetForComponent(release, component);
-
-    if (asset is null)
-      throw new InvalidOperationException($"No asset found in release {release.TagName} for component {component}.");
+    var asset = SelectAssetForComponent(release, component) ?? throw new InvalidOperationException($"No asset found in release {release.TagName} for component {component}.");
 
     var downloadUri = new Uri(asset.BrowserDownloadUrl);
-    var downloadResult = await Downloader.Download(downloadUri, destination, progress);
+    var downloadResult = await Downloader.Download(downloadUri, destination, authToken, progress);
 
     // Technically ResultingFilePath could be null, but if our download result is a success, there's no reason it should.
     return !downloadResult.Success
@@ -51,12 +48,12 @@ public class AresDownloader(IAppConfigurationService configurationService) : IAr
       : downloadResult.ResultingFilePath!;
   }
 
-  private GitHubClient CreateClient()
+  private GitHubClient CreateClient(string? authtoken)
   {
     var client = new GitHubClient(new ProductHeaderValue("ares-launcher"));
 
-    if (!string.IsNullOrEmpty(configurationService.Current.GitToken))
-      client.Credentials = new Credentials(configurationService.Current.GitToken);
+    if (!string.IsNullOrEmpty(authtoken))
+      client.Credentials = new Credentials(authtoken);
 
     return client;
   }
@@ -98,9 +95,9 @@ public class AresDownloader(IAppConfigurationService configurationService) : IAr
 
     var keywords = component switch
     {
-      AresComponent.Ui => new[] { "ui", os },
-      AresComponent.Service => new[] { "service", os },
-      AresComponent.Both => new[] { os },
+      AresComponent.Ui => ["ui", os],
+      AresComponent.Service => ["service", os],
+      AresComponent.Both => [os],
       _ => Array.Empty<string>()
     };
 

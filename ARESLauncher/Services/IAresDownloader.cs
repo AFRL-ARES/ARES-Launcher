@@ -12,7 +12,7 @@ namespace ARESLauncher.Services;
 /// </summary>
 public interface IAresDownloader
 {
-  Task<SemanticVersion[]> GetAvailableVersions(AresSource source);
+  Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken);
 
   /// <summary>
   /// </summary>
@@ -22,6 +22,6 @@ public interface IAresDownloader
   /// <param name="destination"></param>
   /// <param name="progress"></param>
   /// <returns>The file path of the newly downloaded item</returns>
-  Task<string> Download(AresSource source, SemanticVersion version, AresComponent component, string destination,
+  Task<string> Download(AresSource source, SemanticVersion version, AresComponent component, string destination, string? authToken,
     IProgress<double>? progress = null);
 }
