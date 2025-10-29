@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
-using System.Net.Http.Headers;
 
 namespace ARESLauncher.Tools;
 
@@ -13,22 +13,22 @@ public static class Downloader
   {
     using var client = new HttpClient();
     client.DefaultRequestHeaders.UserAgent.ParseAdd("ARESLauncher/1.0");
-    if (!string.IsNullOrEmpty(authToken))
+    if(!string.IsNullOrEmpty(authToken))
     {
-      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", authToken);
+      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
     }
     client.DefaultRequestHeaders.Accept.ParseAdd("application/octet-stream");
 
     using var response = await client.GetAsync(source, HttpCompletionOption.ResponseHeadersRead);
 
-    if (!response.IsSuccessStatusCode)
+    if(!response.IsSuccessStatusCode)
       return new DownloadResult(false, response.ReasonPhrase ?? "Unknown Error :)", null);
 
-    if (!IsValidSource(response))
+    if(!IsValidSource(response))
       return new DownloadResult(false, "The downloader only downloads files, not directories", null);
 
     var (ensureSuccess, ensureError, ensurePath) = EnsureDestinationIsGud(destination, response);
-    if (!ensureSuccess) return new DownloadResult(false, ensureError, null);
+    if(!ensureSuccess) return new DownloadResult(false, ensureError, null);
 
     await using var fileStream = new FileStream(ensurePath, FileMode.Create, FileAccess.Write, FileShare.None);
     await using var networkStream = await response.Content.ReadAsStreamAsync();
@@ -48,7 +48,7 @@ public static class Downloader
   private static (bool Success, string Error, string Destination) EnsureDestinationIsGud(string destination,
     HttpResponseMessage response)
   {
-    if (ShouldTreatAsDirectory(destination))
+    if(ShouldTreatAsDirectory(destination))
     {
       var fileName = ResolveFileName(response) ?? "new_download";
       destination = Path.Combine(destination, fileName);
@@ -57,12 +57,12 @@ public static class Downloader
     destination = Path.GetFullPath(destination);
 
     var directoryPath = Path.GetDirectoryName(destination);
-    if (!string.IsNullOrEmpty(directoryPath))
+    if(!string.IsNullOrEmpty(directoryPath))
       try
       {
         Directory.CreateDirectory(directoryPath);
       }
-      catch (Exception e)
+      catch(Exception e)
       {
         return new ValueTuple<bool, string, string>(false,
           $"Failed to ensure the destination directory exists. {e.Message}", "");
@@ -73,11 +73,11 @@ public static class Downloader
 
   private static bool ShouldTreatAsDirectory(string path)
   {
-    if (File.Exists(path)) return false;
+    if(File.Exists(path)) return false;
 
-    if (Directory.Exists(path)) return true;
+    if(Directory.Exists(path)) return true;
 
-    if (path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)) return true;
+    if(path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)) return true;
 
     return string.IsNullOrEmpty(Path.GetFileName(path));
   }
@@ -85,13 +85,13 @@ public static class Downloader
   private static string? ResolveFileName(HttpResponseMessage response)
   {
     var disposition = response.Content.Headers.ContentDisposition;
-    if (disposition == null) return null;
+    if(disposition == null) return null;
 
     var candidate = !string.IsNullOrWhiteSpace(disposition.FileNameStar)
       ? disposition.FileNameStar
       : disposition.FileName;
 
-    if (string.IsNullOrWhiteSpace(candidate)) return null;
+    if(string.IsNullOrWhiteSpace(candidate)) return null;
 
     var trimmed = candidate.Trim().Trim('"');
     var safeName = Path.GetFileName(trimmed);
@@ -107,16 +107,16 @@ public static class Downloader
     long totalRead = 0;
     int read;
 
-    while ((read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length))) > 0)
+    while((read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length))) > 0)
     {
       await destination.WriteAsync(buffer.AsMemory(0, read));
       totalRead += read;
 
-      if (contentLength.HasValue && contentLength.Value > 0)
+      if(contentLength.HasValue && contentLength.Value > 0)
         progress?.Report(Math.Min(1.0, (double)totalRead / contentLength.Value));
     }
 
-    if (!contentLength.HasValue || contentLength.Value == 0)
+    if(!contentLength.HasValue || contentLength.Value == 0)
       progress?.Report(double.NaN);
     else
       progress?.Report(1.0);

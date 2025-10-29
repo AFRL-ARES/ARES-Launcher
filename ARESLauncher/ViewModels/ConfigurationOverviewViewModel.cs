@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using ARESLauncher.Services.Configuration;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace ARESLauncher.ViewModels;
 
-public class ConfigurationOverviewViewModel : ViewModelBase
+public partial class ConfigurationOverviewViewModel : ViewModelBase
 {
   private readonly IAppConfigurationService _configurationService;
   private string _uiDataPath = string.Empty;
@@ -65,6 +66,12 @@ public class ConfigurationOverviewViewModel : ViewModelBase
     private set => this.RaiseAndSetIfChanged(ref _gitToken, value);
   }
 
+  [Reactive]
+  public partial string AresDataPath { get; private set; }
+
+  [Reactive]
+  public partial string BinariesRoot { get; private set; }
+
   public void Refresh()
   {
     var current = _configurationService.Current;
@@ -76,5 +83,7 @@ public class ConfigurationOverviewViewModel : ViewModelBase
     DefaultRepositoryDisplay = $"{current.CurrentAresRepo.Owner}/{current.CurrentAresRepo.Repo}";
     AvailableRepositoriesDisplay = current.AvailableAresRepos.Select(repo => $"{repo.Owner}/{repo.Repo}").ToArray();
     GitToken = current.GitToken;
+    AresDataPath = current.AresDataPath;
+    BinariesRoot = current.BinariesRoot;
   }
 }

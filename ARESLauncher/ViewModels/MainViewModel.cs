@@ -13,6 +13,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IAppSettingsUpdater _appSettingsUpdater;
   private readonly ICertificateManager _certificateManager;
+  private readonly IAresUpdater _aresUpdater;
   private readonly IDatabaseManager _databaseManager;
 
   //[Reactive(SetModifier = AccessModifier.Private)]
@@ -24,6 +25,7 @@ public partial class MainViewModel : ViewModelBase
     IAresStarter aresStarter,
     IAppSettingsUpdater appSettingsUpdater,
     ICertificateManager certificateManager,
+    IAresUpdater aresUpdater,
     IDatabaseManager databaseManager)
   {
     Overview = overview ?? throw new ArgumentNullException(nameof(overview));
@@ -31,6 +33,7 @@ public partial class MainViewModel : ViewModelBase
     _aresBinaryManager = aresBinaryManager;
     _appSettingsUpdater = appSettingsUpdater;
     _certificateManager = certificateManager;
+    _aresUpdater = aresUpdater;
     _databaseManager = databaseManager;
     Editor.ConfigurationSaved += OnConfigurationSaved;
 
@@ -38,6 +41,10 @@ public partial class MainViewModel : ViewModelBase
     StartAres = ReactiveCommand.Create(aresStarter.Start);
     StopAres = ReactiveCommand.CreateFromTask(aresStarter.Stop);
     AresUpdate = ReactiveCommand.CreateFromTask(AwesUpdayt);
+
+    _aresUpdater.UpdateStepDescription.BindTo(this, vm => vm.UpdateStepDescription);
+    _aresUpdater.CurrentUpdateStep.BindTo(this, vm => vm.CurrentStep);
+    _aresUpdater.UpdateProgress.BindTo(this, vm => vm.Progress);
 
     aresStarter.AresRunning.BindTo(this, vm => vm.AresRunning);
   }
@@ -55,17 +62,28 @@ public partial class MainViewModel : ViewModelBase
 
   private async Task AwesUpdayt()
   {
-    _appSettingsUpdater.UpdateAll();
-    await _certificateManager.Update();
-    await _databaseManager.RunMigrations();
+    await _aresUpdater.UpdateLatest();
   }
+
+  //public IObservable<string> UpdateStepDescription { get; }
+
+  [Reactive]
+  public partial string UpdateStepDescription { get; private set; }
+
+  [Reactive]
+  public partial UpdateStep CurrentStep { get; private set; }
+  //public IObservable<UpdateStep> CurrentStep { get; }
+
+  [Reactive]
+  public partial double Progress { get; private set; }
+  //public IObservable<double> Progress { get; }
 
   [Reactive]
   public partial bool AresPresent { get; private set; }
 
   [Reactive]
   public partial DatabaseStatus DatabaseStatus { get; private set; }
-  
+
   [Reactive]
   public partial bool AresRunning { get; private set; }
 

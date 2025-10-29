@@ -12,7 +12,7 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
 {
   public void Update(AresComponent component)
   {
-    switch (component)
+    switch(component)
     {
       case AresComponent.Ui:
         UpdateUi();
@@ -27,7 +27,9 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
 
   public void UpdateAll()
   {
-    foreach (var aresComponent in Enum.GetValues<AresComponent>()) Update(aresComponent);
+    AresComponent[] components = [AresComponent.Ui, AresComponent.Service];
+    foreach(var aresComponent in components)
+      Update(aresComponent);
   }
 
   private void UpdateUi()
@@ -86,12 +88,12 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
 
     var endpoints = settingsBase.Kestrel.Endpoints;
 
-    if (uri.Scheme == Uri.UriSchemeHttp)
+    if(uri.Scheme == Uri.UriSchemeHttp)
     {
       endpoints.Http ??= new HttpEndpoint();
       endpoints.Http.Url = uri.AbsoluteUri;
     }
-    else if (uri.Scheme == Uri.UriSchemeHttps)
+    else if(uri.Scheme == Uri.UriSchemeHttps)
     {
       endpoints.Https ??= new HttpsEndpoint();
       endpoints.Https.Url = uri.AbsoluteUri;

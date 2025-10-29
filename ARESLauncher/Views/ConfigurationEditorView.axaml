@@ -10,7 +10,7 @@
     <StackPanel Margin="16"
                 Spacing="12">
       <Grid ColumnDefinitions="Auto,*"
-            RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
         <TextBlock Grid.Row="0"
                    Grid.Column="0"
                    Margin="0,0,0,8"
@@ -30,47 +30,66 @@
                  Grid.Column="1"
                  Margin="12,0,0,8"
                  Text="{Binding EditableServiceDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
+        
         <TextBlock Grid.Row="2"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="SQLite database path:" />
+                Grid.Column="0"
+                Margin="0,0,0,8"
+                VerticalAlignment="Center"
+                Text="Combined data path:" />
         <TextBox Grid.Row="2"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                Grid.Column="1"
+                Margin="12,0,0,8"
+                Text="{Binding EditableRootDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
         <TextBlock Grid.Row="3"
                    Grid.Column="0"
                    Margin="0,0,0,8"
                    VerticalAlignment="Center"
-                   Text="Database provider:" />
-        <ComboBox Grid.Row="3"
-                  Grid.Column="1"
-                  Margin="12,0,0,8"
-                  ItemsSource="{Binding DatabaseProviders}"
-                  SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
+                   Text="SQLite database path:" />
+        <TextBox Grid.Row="3"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
         <TextBlock Grid.Row="4"
                    Grid.Column="0"
                    Margin="0,0,0,8"
                    VerticalAlignment="Center"
-                   Text="Default repo owner:" />
-        <TextBox Grid.Row="4"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding EditableDefaultRepoOwner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                   Text="Database provider:" />
+        <ComboBox Grid.Row="4"
+                  Grid.Column="1"
+                  Margin="12,0,0,8"
+                  ItemsSource="{Binding DatabaseProviders}"
+                  SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
 
         <TextBlock Grid.Row="5"
                    Grid.Column="0"
                    Margin="0,0,0,8"
                    VerticalAlignment="Center"
-                   Text="Default repo name:" />
+                   Text="Default repo owner:" />
         <TextBox Grid.Row="5"
+                 Grid.Column="1"
+                 Margin="12,0,0,8"
+                 Text="{Binding EditableDefaultRepoOwner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Grid.Row="6"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="Default repo name:" />
+        <TextBox Grid.Row="6"
                  Grid.Column="1"
                  Margin="12,0,0,0"
                  Text="{Binding EditableDefaultRepoName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Grid.Row="7"
+                   Grid.Column="0"
+                   Margin="0,0,0,8"
+                   VerticalAlignment="Center"
+                   Text="Ares Data Path:" />
+        <TextBox Grid.Row="7"
+                 Grid.Column="1"
+                 Margin="12,0,0,0"
+                 Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
       </Grid>
 
       <StackPanel Spacing="8">

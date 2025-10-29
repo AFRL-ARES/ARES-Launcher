@@ -23,6 +23,9 @@
 					<Button Command="{Binding StopAres}">Stop</Button>
 					<Button Command="{Binding Refresh}">Refresh</Button>
 					<Button Command="{Binding AresUpdate}">Ares Update</Button>
+					<TextBlock Text="{Binding CurrentStep}" />
+					<TextBlock Text="{Binding UpdateStepDescription}" />
+					<ProgressBar Maximum="1.0" Value="{Binding Progress}" />
 				</StackPanel>
 			</Grid>
     </TabItem>

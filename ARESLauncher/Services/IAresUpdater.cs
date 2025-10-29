@@ -16,4 +16,6 @@ public interface IAresUpdater
   Task<SemanticVersion[]> GetAvailableVersions();
 
   Task Update(SemanticVersion version);
+
+  Task UpdateLatest();
 }

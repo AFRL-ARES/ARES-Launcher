@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
@@ -41,6 +42,7 @@ public class AresUpdater : IAresUpdater
     _logger = logger;
     UpdateStepDescription = _updateStepDescriptionSubject.AsObservable();
     UpdateProgress = _updateProgressSubject.AsObservable();
+    CurrentUpdateStep = _currentUpdateStepSubject.AsObservable();
   }
 
   public Task<SemanticVersion[]> GetAvailableVersions()
@@ -55,16 +57,6 @@ public class AresUpdater : IAresUpdater
     var serviceDir = _configurationService.Current.ServiceBinaryPath;
     var rootDir = _configurationService.Current.BinariesRoot;
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
-    _updateStepDescriptionSubject.OnNext("Checking version");
-    var versions = await GetAvailableVersions();
-    var currentVersion = _binaryManager.CurrentVersion;
-    if (currentVersion?.IsGreatest(versions) ?? false)
-    {
-      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
-      _updateStepDescriptionSubject.OnNext("Already on the latest version.");
-      return;
-    }
-
     _updateStepDescriptionSubject.OnNext("Cleaning up the previous version.");
 
     if(Directory.Exists(uiDir))
@@ -95,6 +87,24 @@ public class AresUpdater : IAresUpdater
     }
     _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
     _updateStepDescriptionSubject.OnNext("");
+  }
+
+  public async Task UpdateLatest()
+  {
+    _updateStepDescriptionSubject.OnNext("Checking version");
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    var versions = await GetAvailableVersions();
+    var currentVersion = _binaryManager.CurrentVersion;
+    if(currentVersion?.IsGreatest(versions) ?? false)
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("Already on the latest version.");
+      return;
+    }
+
+    var latest = versions.OrderDescending().FirstOrDefault() ?? throw new InvalidOperationException("No versions found for ARES");
+
+    await Update(latest);
   }
 
   public IObservable<string> UpdateStepDescription { get; }

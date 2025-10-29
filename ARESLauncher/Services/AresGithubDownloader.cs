@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
-using ARESLauncher.Services.Configuration;
 using ARESLauncher.Tools;
 using NuGet.Versioning;
 using Octokit;
@@ -21,12 +20,12 @@ public class AresGithubDownloader() : IAresDownloader
     var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo);
 
     var versions = new List<SemanticVersion>();
-    foreach (var release in releases)
+    foreach(var release in releases)
     {
       var normalizedTag = TryNormalizeTag(release.TagName);
-      if (string.IsNullOrEmpty(normalizedTag)) continue;
+      if(string.IsNullOrEmpty(normalizedTag)) continue;
 
-      if (SemanticVersion.TryParse(normalizedTag, out var semanticVersion)) versions.Add(semanticVersion);
+      if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion)) versions.Add(semanticVersion);
     }
 
     return versions.ToArray();
@@ -39,7 +38,7 @@ public class AresGithubDownloader() : IAresDownloader
     var release = await GetReleaseForVersion(client, source, version);
     var asset = SelectAssetForComponent(release, component) ?? throw new InvalidOperationException($"No asset found in release {release.TagName} for component {component}.");
 
-    var downloadUri = new Uri(asset.BrowserDownloadUrl);
+    var downloadUri = new Uri(asset.Url);
     var downloadResult = await Downloader.Download(downloadUri, destination, authToken, progress);
 
     // Technically ResultingFilePath could be null, but if our download result is a success, there's no reason it should.
@@ -52,7 +51,7 @@ public class AresGithubDownloader() : IAresDownloader
   {
     var client = new GitHubClient(new ProductHeaderValue("ares-launcher"));
 
-    if (!string.IsNullOrEmpty(authtoken))
+    if(!string.IsNullOrEmpty(authtoken))
       client.Credentials = new Credentials(authtoken);
 
     return client;
@@ -61,12 +60,12 @@ public class AresGithubDownloader() : IAresDownloader
   private static async Task<Release> GetReleaseForVersion(GitHubClient client, AresSource source,
     SemanticVersion version)
   {
-    foreach (var tag in EnumerateTagCandidates(version))
+    foreach(var tag in EnumerateTagCandidates(version))
       try
       {
         return await client.Repository.Release.Get(source.Owner, source.Repo, tag);
       }
-      catch (NotFoundException)
+      catch(NotFoundException)
       {
         // Try next candidate.
       }
@@ -81,16 +80,16 @@ public class AresGithubDownloader() : IAresDownloader
     yield return $"v{normalized}";
 
     var original = version.ToString();
-    if (!string.Equals(original, normalized, StringComparison.Ordinal)) yield return original;
+    if(!string.Equals(original, normalized, StringComparison.Ordinal)) yield return original;
 
     var full = version.ToFullString();
-    if (!string.Equals(full, normalized, StringComparison.Ordinal) &&
+    if(!string.Equals(full, normalized, StringComparison.Ordinal) &&
         !string.Equals(full, original, StringComparison.Ordinal)) yield return full;
   }
 
   private static ReleaseAsset? SelectAssetForComponent(Release release, AresComponent component)
   {
-    if (release.Assets is null || release.Assets.Count == 0) return null;
+    if(release.Assets is null || release.Assets.Count == 0) return null;
     var os = OsBundleNameGetter.GetName();
 
     var keywords = component switch
@@ -104,17 +103,17 @@ public class AresGithubDownloader() : IAresDownloader
     var asset = release.Assets.FirstOrDefault(a =>
       keywords.All(keyword => a.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true));
 
-    if (asset is not null) return asset;
+    if(asset is not null) return asset;
 
     return release.Assets.Count == 1 ? release.Assets[0] : null;
   }
 
   private static string? TryNormalizeTag(string? tag)
   {
-    if (string.IsNullOrWhiteSpace(tag)) return null;
+    if(string.IsNullOrWhiteSpace(tag)) return null;
 
     var trimmed = tag.Trim();
-    if (trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase) && trimmed.Length > 1 && char.IsDigit(trimmed[1]))
+    if(trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase) && trimmed.Length > 1 && char.IsDigit(trimmed[1]))
       trimmed = trimmed[1..];
 
     return trimmed;
