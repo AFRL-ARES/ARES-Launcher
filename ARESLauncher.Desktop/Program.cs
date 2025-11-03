@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using ARESLauncher;
+using ARESLauncher.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
 using Avalonia.ReactiveUI;
+using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI;
 
 namespace ARESLauncher.Desktop;
@@ -38,12 +39,12 @@ class Program
 
     var iconPath = "avares://ARESLauncher/Assets/BlackARESLogo_Smol.ico";
 
-    if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+    if(RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
     {
       // White logo looks better in the system bar
       iconPath = "avares://ARESLauncher/Assets/WhiteARESLogo_Smol.ico";
     }
-    
+
     var icon = AssetLoader.Open(new Uri(iconPath));
     var trayIcon = new TrayIcon
     {
@@ -57,7 +58,8 @@ class Program
             {
               Command = ReactiveCommand.Create(() =>
               {
-                // TODO: Open the browser to ARES
+                var browserOpener = App.ServiceProvider?.GetService<IBrowserOpener>();
+                browserOpener?.Open();
               })
             },
             new NativeMenuItem("Open Launcher")

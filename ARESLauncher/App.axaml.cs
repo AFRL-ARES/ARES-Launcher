@@ -1,3 +1,4 @@
+using System;
 using ARESLauncher.ViewModels;
 using ARESLauncher.Views;
 using Avalonia;
@@ -12,6 +13,8 @@ public class App : Application
 {
   public bool IsShuttingDown { get; private set; }
 
+  public static IServiceProvider? ServiceProvider { get; private set; }
+
   public override void Initialize()
   {
     AvaloniaXamlLoader.Load(this);
@@ -22,9 +25,10 @@ public class App : Application
     var collection = new ServiceCollection();
     collection.AddCommonServices();
     var services = collection.BuildServiceProvider();
+    ServiceProvider = services;
 
     var vm = services.GetRequiredService<MainViewModel>();
-    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+    if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
     {
       desktop.MainWindow = new MainWindow
       {
@@ -41,7 +45,7 @@ public class App : Application
 
       desktop.Exit += (_, _) => { IsShuttingDown = true; };
     }
-    else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
+    else if(ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
     {
       singleViewPlatform.MainView = new MainView
       {

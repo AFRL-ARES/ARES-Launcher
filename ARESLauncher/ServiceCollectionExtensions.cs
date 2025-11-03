@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
     collection.AddSingleton<IDatabaseManager, DatabaseManager>();
     collection.AddSingleton<IExecutableGetter, ExecutableGetter>();
     collection.AddSingleton<ICertificateManager, CertificateManager>();
+    collection.AddSingleton<IBrowserOpener, BrowserOpener>();
     collection.AddTransient<ConfigurationOverviewViewModel>();
     collection.AddTransient<ConfigurationEditorViewModel>();
     collection.AddTransient<MainViewModel>();
