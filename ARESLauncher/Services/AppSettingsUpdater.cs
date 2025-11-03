@@ -5,10 +5,11 @@ using ARESLauncher.Models;
 using ARESLauncher.Models.AppSettings;
 using ARESLauncher.Services.Configuration;
 using ARESLauncher.Tools;
+using Microsoft.Extensions.Logging;
 
 namespace ARESLauncher.Services;
 
-public class AppSettingsUpdater(IAppConfigurationService _configurationService) : IAppSettingsUpdater
+public class AppSettingsUpdater(IAppConfigurationService _configurationService, ILogger<AppSettingsUpdater> _logger) : IAppSettingsUpdater
 {
   public void Update(AresComponent component)
   {
@@ -36,6 +37,11 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
   {
     var path = _configurationService.Current.UiBinaryPath;
     path = Path.Combine(path, "appsettings.ui.json");
+    if(!File.Exists(path))
+    {
+      _logger.LogWarning("Tried to update the UI settings but the settings file at {Path} was not found.", path);
+      return;
+    }
 
     var serviceUri = new Uri(_configurationService.Current.ServiceEndpoint);
 
@@ -53,6 +59,11 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService) 
   {
     var path = _configurationService.Current.ServiceBinaryPath;
     path = Path.Combine(path, "appsettings.aresservice.json");
+    if(!File.Exists(path))
+    {
+      _logger.LogWarning("Tried to update the Service settings but the settings file at {Path} was not found.", path);
+      return;
+    }
 
     AppSettingsHelper.Update<AppSettingsService>(path, appSettings =>
     {

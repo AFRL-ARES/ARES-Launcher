@@ -62,10 +62,21 @@ public partial class MainViewModel : ViewModelBase
 
   private async Task AwesUpdayt()
   {
-    await _aresUpdater.UpdateLatest();
+    try
+    {
+      Error = "";
+      await _aresUpdater.UpdateLatest();
+    }
+    catch(Exception e)
+    {
+      Error = e.Message;
+    }
   }
 
   //public IObservable<string> UpdateStepDescription { get; }
+
+  [Reactive]
+  public partial string Error { get; private set; }
 
   [Reactive]
   public partial string UpdateStepDescription { get; private set; }

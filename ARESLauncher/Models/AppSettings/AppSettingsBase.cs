@@ -12,6 +12,8 @@ public abstract class AppSettingsBase
   [JsonConverter(typeof(JsonStringEnumConverter))]
   public DatabaseProvider DatabaseProvider { get; set; } = DatabaseProvider.None;
 
+  public SerilogConfig? Serilog { get; set; }
+
   public Dictionary<DatabaseProvider, string> ConnectionStrings { get; set; } = [];
 
   public LoggingOptions? Logging { get; set; }
@@ -92,4 +94,35 @@ public class CertificateSettings
   public string? Path { get; set; }
   //public string? KeyPath { get; set; } = null; // not sure if this is needed
   public string? Password { get; set; }
+}
+
+
+public class SerilogConfig
+{
+  public List<string>? Using { get; set; }
+  public MinimumLevelConfig? MinimumLevel { get; set; }
+  public List<WriteToConfig>? WriteTo { get; set; }
+  public List<string>? Enrich { get; set; }
+}
+
+public class MinimumLevelConfig
+{
+  public string? Default { get; set; }
+  public Dictionary<string, string>? Override { get; set; }
+}
+
+public class WriteToConfig
+{
+  public string? Name { get; set; }
+  public WriteToArgs? Args { get; set; }
+}
+
+public class WriteToArgs
+{
+  [JsonPropertyName("path")]
+  public string? Path { get; set; }
+  [JsonPropertyName("rollingInterval")]
+  public string? RollingInterval { get; set; }
+  [JsonPropertyName("outputTemplate")]
+  public string? OutputTemplate { get; set; }
 }
