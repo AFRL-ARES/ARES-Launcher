@@ -1,4 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:avalonia="using:LoadingIndicators.Avalonia"
+             xmlns:converters="using:ARESLauncher.Views.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -9,23 +11,35 @@
              x:DataType="vm:MainViewModel">
   <TabControl>
     <TabItem Header="Overview">
+		<Grid>
+			<Grid.RowDefinitions>
+				<RowDefinition />
+				<RowDefinition />
+			</Grid.RowDefinitions>
 			<Grid>
+				<Image Source="avares://ARESLauncher/Assets/BlackARESLogo.ico" />
+			</Grid>
+			<Grid Grid.Row="1">
 				<Grid.RowDefinitions>
 					<RowDefinition />
 					<RowDefinition />
 				</Grid.RowDefinitions>
-        <views:ConfigurationOverviewView Grid.Row="0" DataContext="{Binding Overview}" />
+				<Border Grid.RowSpan="2" Background="#80000000" IsVisible="{Binding !AresConditionChecked}">
+					<avalonia:LoadingIndicator Mode="Ring" />
+				</Border>
+				<views:ConfigurationOverviewView Grid.Row="0" DataContext="{Binding Overview}" />
 				<StackPanel Grid.Row="1">
 					<TextBlock Text="{Binding AresPresent}"></TextBlock>
 					<TextBlock Text="{Binding DatabaseStatus}"></TextBlock>
-					<TextBlock Text="Ares is running" IsVisible="{Binding AresRunning}"></TextBlock>
 					<TextBlock Text="{Binding Error}" Foreground="Red" />
 					<Button Command="{Binding ButtonCommand}" Content="{Binding ButtonText}"></Button>
+					<Button Command="{Binding AuxButtonCommand}" Content="{Binding AuxButtonText}" IsVisible="{Binding AuxButtonCommand, Converter={x:Static ObjectConverters.IsNotNull}}"></Button>
 					<TextBlock Text="{Binding CurrentStep}" />
 					<TextBlock Text="{Binding UpdateStepDescription}" />
 					<ProgressBar Maximum="1.0" Value="{Binding Progress}" />
 				</StackPanel>
 			</Grid>
+		</Grid>
     </TabItem>
     <TabItem Header="Configuration">
       <views:ConfigurationEditorView DataContext="{Binding Editor}" />
