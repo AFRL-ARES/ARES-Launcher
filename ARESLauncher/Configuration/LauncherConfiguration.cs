@@ -7,7 +7,8 @@ namespace ARESLauncher.Configuration;
 
 public class LauncherConfiguration
 {
-  [JsonIgnore] private static readonly string _appPath =
+  [JsonIgnore]
+  private static readonly string _appPath =
     Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location) ?? Directory.GetCurrentDirectory();
 
   public AresSource CurrentAresRepo { get; set; } = new("AFRL-ARES", "ARES");
@@ -39,4 +40,7 @@ public class LauncherConfiguration
   public string CertificatePath { get; } = Path.Combine(_appPath, "Data", "AresOS.pfx");
   public string CertificatePassword { get; } = "SecurePassword";
   public string GitToken { get; set; } = "";
+
+  public string AresServiceProcessName { get; set; } = "AresService";
+  public string AresUiProcessName { get; set; } = "UI";
 }

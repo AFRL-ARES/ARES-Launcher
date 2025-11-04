@@ -19,7 +19,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ICertificateManager _certificateManager;
   private readonly IAresUpdater _aresUpdater;
   private readonly IDatabaseManager _databaseManager;
-
+  private readonly IConflictManager _conflictManager;
   private readonly ObservableAsPropertyHelper<bool> _updateAvailable;
   private readonly ObservableAsPropertyHelper<int> _aresComponentsRunning;
   private readonly ObservableAsPropertyHelper<AresState> _aresState;
@@ -36,7 +36,8 @@ public partial class MainViewModel : ViewModelBase
     ICertificateManager certificateManager,
     IAresUpdater aresUpdater,
     IDatabaseManager databaseManager,
-    IBrowserOpener browserOpener)
+    IBrowserOpener browserOpener,
+    IConflictManager conflictManager)
   {
     Overview = overview ?? throw new ArgumentNullException(nameof(overview));
     Editor = editor ?? throw new ArgumentNullException(nameof(editor));
@@ -46,6 +47,7 @@ public partial class MainViewModel : ViewModelBase
     _certificateManager = certificateManager;
     _aresUpdater = aresUpdater;
     _databaseManager = databaseManager;
+    _conflictManager = conflictManager;
     Editor.ConfigurationSaved += OnConfigurationSaved;
 
     UpdateDatabaseCommand = ReactiveCommand.CreateFromTask(UpdateDb);
@@ -53,6 +55,17 @@ public partial class MainViewModel : ViewModelBase
     StopAresCommand = ReactiveCommand.CreateFromTask(aresStarter.Stop);
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
+    ConflictDialog = new Interaction<Unit, Unit>();
+    ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
+    {
+      var uiExists = conflictManager.FindPotentialUi();
+      var serviceExists = conflictManager.FindPotentialService();
+      var conflict = uiExists || serviceExists;
+      if(!conflict)
+        return;
+
+      await ConflictDialog.Handle(Unit.Default);
+    });
 
     _updateAvailable = this
       .WhenAnyValue(x => x.AvailableVersions)
@@ -176,6 +189,11 @@ public partial class MainViewModel : ViewModelBase
   public ConfigurationOverviewViewModel Overview { get; }
   public ConfigurationEditorViewModel Editor { get; }
 
+  public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
+  {
+    return new ConflictResolutionDialogViewModel(_conflictManager);
+  }
+
   private async Task CheckAresCondition()
   {
     await _aresBinaryManager.Refresh();
@@ -261,6 +279,10 @@ public partial class MainViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
   public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
+
+  public Interaction<Unit, Unit> ConflictDialog { get; }
 
   private void OnConfigurationSaved(object? sender, EventArgs e)
   {
