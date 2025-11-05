@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="ARESLauncher.AresLogo">
+    <UserControl.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key="Light">
+                    <ControlTheme x:Key="AresLogoTheme" TargetType="Image">
+                        <Setter Property="Source" Value="/Assets/BlackARESLogo.ico"/> 
+                    </ControlTheme>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <ControlTheme x:Key="AresLogoTheme" TargetType="Image">
+                        <Setter Property="Source" Value="/Assets/WhiteARESLogo.ico"/> 
+                    </ControlTheme>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+	    <Image Theme="{DynamicResource AresLogoTheme}" />
+    </Grid>
+</UserControl>

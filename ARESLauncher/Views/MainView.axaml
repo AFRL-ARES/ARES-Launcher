@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:areslauncher="using:ARESLauncher"
              xmlns:avalonia="using:LoadingIndicators.Avalonia"
              xmlns:converters="using:ARESLauncher.Views.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -16,9 +17,7 @@
 				<RowDefinition />
 				<RowDefinition />
 			</Grid.RowDefinitions>
-			<Grid>
-				<Image Source="avares://ARESLauncher/Assets/BlackARESLogo.ico" />
-			</Grid>
+			<areslauncher:AresLogo />
 			<Grid Grid.Row="1">
 				<Grid.RowDefinitions>
 					<RowDefinition />
