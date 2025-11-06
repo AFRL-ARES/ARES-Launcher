@@ -25,6 +25,8 @@ public class JsonAppConfigurationService : IAppConfigurationService
 
   public LauncherConfiguration Current { get; private set; }
 
+  public event EventHandler? ConfigUpdated;
+
   public void Update(Action<LauncherConfiguration> applyChanges)
   {
     if(applyChanges is null)
@@ -37,6 +39,8 @@ public class JsonAppConfigurationService : IAppConfigurationService
       applyChanges(Current);
       PersistCurrentInternal(Current);
     }
+
+    ConfigUpdated?.Invoke(this, EventArgs.Empty);
   }
 
   private LauncherConfiguration LoadConfiguration()

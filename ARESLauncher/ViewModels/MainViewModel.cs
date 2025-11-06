@@ -25,8 +25,10 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<AresState> _aresState;
   private readonly ObservableAsPropertyHelper<string> _buttonText;
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _buttonCommand;
-  private readonly ObservableAsPropertyHelper<string> _auxButtonText;
+  private readonly ObservableAsPropertyHelper<object?> _auxButtonContent;
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _auxButtonCommand;
+  private readonly ObservableAsPropertyHelper<string> _aresStateDescription;
+  private readonly ObservableAsPropertyHelper<bool> _updateInProgress;
 
   public MainViewModel(ConfigurationOverviewViewModel overview,
     ConfigurationEditorViewModel editor,
@@ -51,7 +53,12 @@ public partial class MainViewModel : ViewModelBase
     Editor.ConfigurationSaved += OnConfigurationSaved;
 
     UpdateDatabaseCommand = ReactiveCommand.CreateFromTask(UpdateDb);
-    StartAresCommand = ReactiveCommand.Create(aresStarter.Start);
+    StartAresCommand = ReactiveCommand.CreateFromTask(async () =>
+    {
+      aresStarter.Start();
+      await Task.Delay(TimeSpan.FromSeconds(1));
+      browserOpener.Open();
+    });
     StopAresCommand = ReactiveCommand.CreateFromTask(aresStarter.Stop);
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
@@ -134,19 +141,19 @@ public partial class MainViewModel : ViewModelBase
         _ => throw new NotImplementedException(),
       }).ToProperty(this, vm => vm.ButtonCommand);
 
-    _auxButtonText = this
+    _auxButtonContent = this
       .WhenAnyValue(vm => vm.AresState)
       .Select(s => s switch
       {
-        AresState.Unknown => "",
+        AresState.Unknown => null,
         AresState.OneRunning => "Stop",
-        AresState.BothRunning => "Browser",
-        AresState.Ready => "",
-        AresState.NeedsDbUpdate => "",
-        AresState.NeedsInstall => "",
-        AresState.Updating => "",
+        AresState.BothRunning => "Globe",
+        AresState.Ready => null,
+        AresState.NeedsDbUpdate => null,
+        AresState.NeedsInstall => null,
+        AresState.Updating => null,
         _ => throw new NotImplementedException(),
-      }).ToProperty(this, vm => vm.AuxButtonText);
+      }).ToProperty(this, vm => vm.AuxButtonContent);
 
     _auxButtonCommand = this
       .WhenAnyValue(vm => vm.AresState)
@@ -162,8 +169,32 @@ public partial class MainViewModel : ViewModelBase
         _ => throw new NotImplementedException(),
       }).ToProperty(this, vm => vm.AuxButtonCommand);
 
+    _aresStateDescription = this
+      .WhenAnyValue(vm => vm.AresState)
+      .Select(s => s switch
+      {
+        AresState.Unknown => "Launcher in a weird state, not sure why",
+        AresState.OneRunning => "One component is currently running. You can either stop the current one, or start the other",
+        AresState.BothRunning => "ARES is running",
+        AresState.Ready => "ARES is ready",
+        AresState.NeedsDbUpdate => "Database out of date",
+        AresState.NeedsInstall => "Ready to install",
+        AresState.Updating => "Update in progress",
+        _ => throw new NotImplementedException(),
+      }).ToProperty(this, vm => vm.AresStateDescription);
+
+    _updateInProgress = this
+      .WhenAnyValue(vm => vm.CurrentUpdateStep)
+      .Select(s => s switch
+      {
+        UpdateStep.Idle => false,
+        UpdateStep.Downloading => true,
+        UpdateStep.Other => true,
+        _ => throw new NotImplementedException(),
+      }).ToProperty(this, vm => vm.UpdateInProgress);
+
     _aresUpdater.UpdateStepDescription.ToProperty(this, vm => vm.UpdateStepDescription);
-    _aresUpdater.CurrentUpdateStep.ToProperty(this, vm => vm.CurrentStep);
+    _aresUpdater.CurrentUpdateStep.ToProperty(this, vm => vm.CurrentUpdateStep);
     _aresUpdater.UpdateProgress.ToProperty(this, vm => vm.Progress);
 
     RefreshCommand = ReactiveCommand.CreateFromTask(CheckAresCondition);
@@ -184,7 +215,7 @@ public partial class MainViewModel : ViewModelBase
 
   public IReactiveCommand? AuxButtonCommand => _auxButtonCommand.Value;
 
-  public string AuxButtonText => _auxButtonText.Value;
+  public object? AuxButtonContent => _auxButtonContent.Value;
 
   public ConfigurationOverviewViewModel Overview { get; }
   public ConfigurationEditorViewModel Editor { get; }
@@ -223,6 +254,7 @@ public partial class MainViewModel : ViewModelBase
     {
       Error = "";
       await _aresUpdater.UpdateLatest();
+      await CheckAresCondition();
     }
     catch(Exception e)
     {
@@ -236,6 +268,7 @@ public partial class MainViewModel : ViewModelBase
     {
       Error = "";
       await _databaseManager.RunMigrations();
+      await CheckAresCondition();
     }
     catch(Exception e)
     {
@@ -246,11 +279,9 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial string? Error { get; private set; }
 
-  [Reactive]
-  public partial string? UpdateStepDescription { get; private set; }
+  public string? UpdateStepDescription { get; private set; }
 
-  [Reactive]
-  public partial UpdateStep CurrentStep { get; private set; }
+  public UpdateStep CurrentUpdateStep { get; private set; }
 
   [Reactive]
   public partial double Progress { get; private set; }
@@ -261,7 +292,11 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial DatabaseStatus DatabaseStatus { get; private set; }
 
+  public string AresStateDescription => _aresStateDescription.Value;
+
   public int AresComponentsRunning => _aresComponentsRunning.Value;
+
+  public bool UpdateInProgress => _updateInProgress.Value;
 
   public bool UpdateAvailable => _updateAvailable.Value;
 
@@ -287,5 +322,6 @@ public partial class MainViewModel : ViewModelBase
   private void OnConfigurationSaved(object? sender, EventArgs e)
   {
     Overview.Refresh();
+    _ = CheckAresCondition();
   }
 }

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:areslauncher="using:ARESLauncher"
+             xmlns:ic="using:FluentIcons.Avalonia"
              xmlns:avalonia="using:LoadingIndicators.Avalonia"
              xmlns:converters="using:ARESLauncher.Views.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,9 +8,29 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
              xmlns:views="clr-namespace:ARESLauncher.Views"
+			 xmlns:model="clr-namespace:ARESLauncher.Models"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ARESLauncher.Views.MainView"
              x:DataType="vm:MainViewModel">
+	<UserControl.Styles>
+		<Style Selector="Button.AresButton">
+			<Setter Property="FontWeight" Value="Bold" />
+			<Setter Property="BorderBrush" Value="Black" />
+			<Setter Property="BorderThickness" Value="2" />
+			<Setter Property="Background" Value="LightGray" />
+			<Setter Property="FontSize" Value="24" />
+			<Setter Property="HorizontalContentAlignment" Value="Center" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+		</Style>
+		<Style Selector="Button#PrimaryButton">
+			<Style.Setters>
+			</Style.Setters>
+		</Style>
+		<Style Selector="Button#AuxButton">
+			<Style.Setters>
+			</Style.Setters>
+		</Style>
+	</UserControl.Styles>
   <TabControl>
     <TabItem Header="Overview">
 		<Grid>
@@ -21,19 +42,27 @@
 			<Grid Grid.Row="1">
 				<Grid.RowDefinitions>
 					<RowDefinition />
-					<RowDefinition />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
 				</Grid.RowDefinitions>
-				<Border Grid.RowSpan="2" Background="#80000000" IsVisible="{Binding !AresConditionChecked}">
+				<Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding !AresConditionChecked}">
 					<avalonia:LoadingIndicator Mode="Ring" />
 				</Border>
-				<views:ConfigurationOverviewView Grid.Row="0" DataContext="{Binding Overview}" />
-				<StackPanel Grid.Row="1">
-					<TextBlock Text="{Binding AresPresent}"></TextBlock>
-					<TextBlock Text="{Binding DatabaseStatus}"></TextBlock>
-					<TextBlock Text="{Binding Error}" Foreground="Red" />
-					<Button Command="{Binding ButtonCommand}" Content="{Binding ButtonText}"></Button>
-					<Button Command="{Binding AuxButtonCommand}" Content="{Binding AuxButtonText}" IsVisible="{Binding AuxButtonCommand, Converter={x:Static ObjectConverters.IsNotNull}}"></Button>
-					<TextBlock Text="{Binding CurrentStep}" />
+				<Grid Grid.Row="0" HorizontalAlignment="Center">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="5" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Button Classes="AresButton" x:Name="PrimaryButton" Width="200" Height="100" Command="{Binding ButtonCommand}" Content="{Binding ButtonText}"></Button>
+					<Button Classes="AresButton" x:Name="AuxButton" Grid.Column="2" Width="100" Height="100" Command="{Binding AuxButtonCommand}" IsVisible="{Binding AuxButtonCommand, Converter={x:Static ObjectConverters.IsNotNull}}">
+						<ic:FluentIcon Icon="{Binding AuxButtonContent}" />
+					</Button>
+				</Grid>
+				<TextBlock HorizontalAlignment="Center" Margin="0,5" Grid.Row="1" Text="{Binding AresStateDescription}" />
+				<TextBlock Grid.Row="2" Text="{Binding Error}" Foreground="Red" />
+				<StackPanel Margin="0,10" MaxWidth="200" Grid.Row="3" IsVisible="{Binding UpdateInProgress}">
 					<TextBlock Text="{Binding UpdateStepDescription}" />
 					<ProgressBar Maximum="1.0" Value="{Binding Progress}" />
 				</StackPanel>

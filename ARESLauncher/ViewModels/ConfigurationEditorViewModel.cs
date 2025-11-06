@@ -151,7 +151,6 @@ public class ConfigurationEditorViewModel : ViewModelBase
       configuration.UiBinaryPath = EditableUiDataPath;
       configuration.ServiceBinaryPath = EditableServiceDataPath;
       configuration.SqliteDatabasePath = EditableSqliteDatabasePath;
-      configuration.BinariesRoot = EditableRootDataPath;
       configuration.DatabaseProvider = EditableDatabaseProvider;
       configuration.GitToken = EditableGitToken;
       configuration.AresDataPath = EditableAresDataPath;
@@ -178,7 +177,6 @@ public class ConfigurationEditorViewModel : ViewModelBase
 
     EditableUiDataPath = current.UiBinaryPath;
     EditableServiceDataPath = current.ServiceBinaryPath;
-    EditableRootDataPath = current.BinariesRoot;
     EditableSqliteDatabasePath = current.SqliteDatabasePath;
     EditableDatabaseProvider = current.DatabaseProvider;
     EditableDefaultRepoOwner = current.CurrentAresRepo.Owner;

@@ -15,11 +15,6 @@ public class LauncherConfiguration
 
   public AresSource[] AvailableAresRepos { get; set; } = [new("AFRL-ARES", "ARES")];
 
-  /// <summary>
-  ///   BinariesRoot is used if a bundle is downloaded contining both the UI and Service
-  /// </summary>
-  public string BinariesRoot { get; set; } = Path.Combine(_appPath, "Binaries");
-
   public string UiBinaryPath { get; set; } = Path.Combine(_appPath, "Binaries");
   public string ServiceBinaryPath { get; set; } = Path.Combine(_appPath, "Binaries");
 

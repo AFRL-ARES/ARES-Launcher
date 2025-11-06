@@ -84,6 +84,5 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
     AvailableRepositoriesDisplay = current.AvailableAresRepos.Select(repo => $"{repo.Owner}/{repo.Repo}").ToArray();
     GitToken = current.GitToken;
     AresDataPath = current.AresDataPath;
-    BinariesRoot = current.BinariesRoot;
   }
 }

@@ -55,7 +55,6 @@ public class AresUpdater : IAresUpdater
   {
     var uiDir = _configurationService.Current.UiBinaryPath;
     var serviceDir = _configurationService.Current.ServiceBinaryPath;
-    var rootDir = _configurationService.Current.BinariesRoot;
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     _updateStepDescriptionSubject.OnNext("Cleaning up the previous version.");
 
@@ -63,14 +62,12 @@ public class AresUpdater : IAresUpdater
       Directory.Delete(uiDir, true);
     if(Directory.Exists(serviceDir))
       Directory.Delete(serviceDir, true);
-    if(Directory.Exists(rootDir))
-      Directory.Delete(rootDir, true);
 
     var source = _configurationService.Current.CurrentAresRepo;
 
     _currentUpdateStepSubject.OnNext(UpdateStep.Downloading);
     if(source.Bundle)
-      await DownloadBundle(source, version, rootDir);
+      await DownloadBundle(source, version, uiDir);
     else
       await DownloadIndividualComponents(source, version, uiDir, serviceDir);
 
