@@ -33,6 +33,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
   private readonly ObservableAsPropertyHelper<double> _progress;
   private readonly ObservableAsPropertyHelper<bool> _showProgressBar;
+  private readonly ObservableAsPropertyHelper<bool> _launcherReady;
 
   public MainViewModel(ConfigurationOverviewViewModel overview,
     ConfigurationEditorViewModel editor,
@@ -69,13 +70,18 @@ public partial class MainViewModel : ViewModelBase
     ConflictDialog = new Interaction<Unit, Unit>();
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
+      ConflictsResolved = false;
       var uiExists = conflictManager.FindPotentialUi();
       var serviceExists = conflictManager.FindPotentialService();
       var conflict = uiExists || serviceExists;
       if(!conflict)
+      {
+        ConflictsResolved = true;
         return;
+      }
 
       await ConflictDialog.Handle(Unit.Default);
+      ConflictsResolved = true;
     });
 
     _updateStepDescription = _aresUpdater.UpdateStepDescription.ToProperty(this, vm => vm.UpdateStepDescription);
@@ -206,12 +212,19 @@ public partial class MainViewModel : ViewModelBase
       .Select(s => s == UpdateStep.Downloading)
       .ToProperty(this, vm => vm.ShowProgressBar);
 
+    _launcherReady = this
+      .WhenAnyValue(vm => vm.AresConditionChecked, vm => vm.ConflictsResolved, (chk, resolved) => chk && resolved)
+      .ToProperty(this, vm => vm.LauncherReady);
+
     RefreshCommand = ReactiveCommand.CreateFromTask(CheckAresCondition);
     RefreshCommand.Execute();
   }
 
   [Reactive]
   public partial bool AresConditionChecked { get; private set; }
+
+  [Reactive]
+  public partial bool ConflictsResolved { get; private set; }
 
   [Reactive]
   public partial bool ButtonEnabled { get; private set; }
@@ -225,6 +238,8 @@ public partial class MainViewModel : ViewModelBase
   public IReactiveCommand? AuxButtonCommand => _auxButtonCommand.Value;
 
   public object? AuxButtonContent => _auxButtonContent.Value;
+
+  public bool LauncherReady => _launcherReady.Value;
 
   public ConfigurationOverviewViewModel Overview { get; }
   public ConfigurationEditorViewModel Editor { get; }

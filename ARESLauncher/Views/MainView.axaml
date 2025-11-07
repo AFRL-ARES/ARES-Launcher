@@ -35,23 +35,18 @@
                 <areslauncher:AresLogo Grid.Row="0" Height="180" HorizontalAlignment="Center" Margin="0,5" />
 
               <!-- Main Content -->
-              <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400">
-
-            <!-- Dim overlay with loading indicator -->
-<!--            <Border Grid.RowSpan="4" Background="#80000000" CornerRadius="12" IsVisible="{Binding !AresConditionChecked}">
-                <avalonia:LoadingIndicator Mode="Ring" Width="60" Height="60" VerticalAlignment="Center" HorizontalAlignment="Center" />
-            </Border>-->
+            <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400">
 
             <!-- Primary and auxiliary buttons -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
                 <Button Classes="AresButton" x:Name="PrimaryButton"
-                        IsVisible="{Binding AresConditionChecked}"
+                        IsVisible="{Binding LauncherReady}"
                         Width="180" Height="80"
                         Command="{Binding ButtonCommand}"
                         Content="{Binding ButtonText}" />
 
                 <Button Classes="AresButton"
-                        IsVisible="{Binding !AresConditionChecked}"
+                        IsVisible="{Binding !LauncherReady}"
                         IsEnabled="False"
                         Width="180" Height="80">
                     <avalonia:LoadingIndicator Mode="Ring" Width="60" Height="60" VerticalAlignment="Center" HorizontalAlignment="Center" />
