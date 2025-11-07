@@ -1,14 +1,14 @@
+using ARESLauncher.Models;
+using ARESLauncher.Services.Configuration;
+using ARESLauncher.Tools;
+using Microsoft.Extensions.Logging;
+using NuGet.Versioning;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
-using ARESLauncher.Models;
-using ARESLauncher.Services.Configuration;
-using ARESLauncher.Tools;
-using Microsoft.Extensions.Logging;
-using NuGet.Versioning;
 
 namespace ARESLauncher.Services;
 
@@ -66,10 +66,19 @@ public class AresUpdater : IAresUpdater
     var source = _configurationService.Current.CurrentAresRepo;
 
     _currentUpdateStepSubject.OnNext(UpdateStep.Downloading);
-    if(source.Bundle)
-      await DownloadBundle(source, version, uiDir);
-    else
-      await DownloadIndividualComponents(source, version, uiDir, serviceDir);
+    try
+    {
+      if(source.Bundle)
+        await DownloadBundle(source, version, uiDir);
+      else
+        await DownloadIndividualComponents(source, version, uiDir, serviceDir);
+    }
+    catch(Exception)
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("");
+      throw;
+    }
 
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     _updateStepDescriptionSubject.OnNext("Updating settings");
@@ -120,7 +129,7 @@ public class AresUpdater : IAresUpdater
       await Unpacker.Unpack(bundleDest, dest);
       BinaryMetadataHelper.WriteMetadata(dest, source, version);
     }
-    catch(InvalidOperationException e)
+    catch(Exception e)
     {
       _logger.LogError("Failed to acquire the combined bundle. {}", e);
       throw;
@@ -140,7 +149,7 @@ public class AresUpdater : IAresUpdater
       await Unpacker.Unpack(uiDest, uiDir);
       BinaryMetadataHelper.WriteMetadata(uiDir, source, version);
     }
-    catch(InvalidOperationException e)
+    catch(Exception e)
     {
       _logger.LogError("Failed to acquire the UI. {}", e);
       throw;
@@ -156,7 +165,7 @@ public class AresUpdater : IAresUpdater
       await Unpacker.Unpack(serviceDest, serviceDir);
       BinaryMetadataHelper.WriteMetadata(serviceDir, source, version);
     }
-    catch(InvalidOperationException e)
+    catch(Exception e)
     {
       _logger.LogError("Failed to acquire the Service. {}", e);
       throw;

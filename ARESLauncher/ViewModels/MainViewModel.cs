@@ -29,6 +29,9 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _auxButtonCommand;
   private readonly ObservableAsPropertyHelper<string> _aresStateDescription;
   private readonly ObservableAsPropertyHelper<bool> _updateInProgress;
+  private readonly ObservableAsPropertyHelper<string?> _updateStepDescription;
+  private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
+  private readonly ObservableAsPropertyHelper<double> _progress;
 
   public MainViewModel(ConfigurationOverviewViewModel overview,
     ConfigurationEditorViewModel editor,
@@ -73,6 +76,10 @@ public partial class MainViewModel : ViewModelBase
 
       await ConflictDialog.Handle(Unit.Default);
     });
+
+    _updateStepDescription = _aresUpdater.UpdateStepDescription.ToProperty(this, vm => vm.UpdateStepDescription);
+    _currentUpdateStep = _aresUpdater.CurrentUpdateStep.ToProperty(this, vm => vm.CurrentUpdateStep);
+    _progress = _aresUpdater.UpdateProgress.ToProperty(this, vm => vm.Progress);
 
     _updateAvailable = this
       .WhenAnyValue(x => x.AvailableVersions)
@@ -193,10 +200,6 @@ public partial class MainViewModel : ViewModelBase
         _ => throw new NotImplementedException(),
       }).ToProperty(this, vm => vm.UpdateInProgress);
 
-    _aresUpdater.UpdateStepDescription.ToProperty(this, vm => vm.UpdateStepDescription);
-    _aresUpdater.CurrentUpdateStep.ToProperty(this, vm => vm.CurrentUpdateStep);
-    _aresUpdater.UpdateProgress.ToProperty(this, vm => vm.Progress);
-
     RefreshCommand = ReactiveCommand.CreateFromTask(CheckAresCondition);
     RefreshCommand.Execute();
   }
@@ -279,12 +282,11 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial string? Error { get; private set; }
 
-  public string? UpdateStepDescription { get; private set; }
+  public string? UpdateStepDescription => _updateStepDescription.Value;
 
-  public UpdateStep CurrentUpdateStep { get; private set; }
+  public UpdateStep CurrentUpdateStep => _currentUpdateStep.Value;
 
-  [Reactive]
-  public partial double Progress { get; private set; }
+  public double Progress => _progress.Value;
 
   [Reactive]
   public partial bool AresPresent { get; private set; }

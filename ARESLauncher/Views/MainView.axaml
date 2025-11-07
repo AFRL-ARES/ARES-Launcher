@@ -15,9 +15,6 @@
 	<UserControl.Styles>
 		<Style Selector="Button.AresButton">
 			<Setter Property="FontWeight" Value="Bold" />
-			<Setter Property="BorderBrush" Value="Black" />
-			<Setter Property="BorderThickness" Value="2" />
-			<Setter Property="Background" Value="LightGray" />
 			<Setter Property="FontSize" Value="24" />
 			<Setter Property="HorizontalContentAlignment" Value="Center" />
 			<Setter Property="VerticalContentAlignment" Value="Center" />
@@ -33,41 +30,61 @@
 	</UserControl.Styles>
   <TabControl>
     <TabItem Header="Overview">
-		<Grid>
-			<Grid.RowDefinitions>
-				<RowDefinition />
-				<RowDefinition />
-			</Grid.RowDefinitions>
-			<areslauncher:AresLogo />
-			<Grid Grid.Row="1">
-				<Grid.RowDefinitions>
-					<RowDefinition />
-					<RowDefinition Height="Auto" />
-					<RowDefinition Height="Auto" />
-					<RowDefinition Height="Auto" />
-				</Grid.RowDefinitions>
-				<Border Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding !AresConditionChecked}">
-					<avalonia:LoadingIndicator Mode="Ring" />
-				</Border>
-				<Grid Grid.Row="0" HorizontalAlignment="Center">
-					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="*" />
-						<ColumnDefinition Width="5" />
-						<ColumnDefinition Width="Auto" />
-					</Grid.ColumnDefinitions>
-					<Button Classes="AresButton" x:Name="PrimaryButton" Width="200" Height="100" Command="{Binding ButtonCommand}" Content="{Binding ButtonText}"></Button>
-					<Button Classes="AresButton" x:Name="AuxButton" Grid.Column="2" Width="100" Height="100" Command="{Binding AuxButtonCommand}" IsVisible="{Binding AuxButtonCommand, Converter={x:Static ObjectConverters.IsNotNull}}">
-						<ic:FluentIcon Icon="{Binding AuxButtonContent}" />
-					</Button>
-				</Grid>
-				<TextBlock HorizontalAlignment="Center" Margin="0,5" Grid.Row="1" Text="{Binding AresStateDescription}" />
-				<TextBlock Grid.Row="2" Text="{Binding Error}" Foreground="Red" />
-				<StackPanel Margin="0,10" MaxWidth="200" Grid.Row="3" IsVisible="{Binding UpdateInProgress}">
-					<TextBlock Text="{Binding UpdateStepDescription}" />
-					<ProgressBar Maximum="1.0" Value="{Binding Progress}" />
-				</StackPanel>
-			</Grid>
-		</Grid>
+		<Grid RowDefinitions="Auto,*">
+  <!-- Top Logo -->
+  <areslauncher:AresLogo Grid.Row="0" Height="180" HorizontalAlignment="Center" Margin="0,5" />
+
+  <!-- Main Content -->
+  <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400">
+
+    <!-- Dim overlay with loading indicator -->
+    <Border Grid.RowSpan="4" Background="#80000000" CornerRadius="12" IsVisible="{Binding !AresConditionChecked}">
+      <avalonia:LoadingIndicator Mode="Ring" Width="60" Height="60" VerticalAlignment="Center" HorizontalAlignment="Center" />
+    </Border>
+
+    <!-- Primary and auxiliary buttons -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+      <Button Classes="AresButton" x:Name="PrimaryButton"
+              Width="180" Height="80"
+              Command="{Binding ButtonCommand}"
+              Content="{Binding ButtonText}" />
+
+      <Button Classes="AresButton" x:Name="AuxButton"
+              Width="70" Height="80"
+              Command="{Binding AuxButtonCommand}"
+              IsVisible="{Binding AuxButtonCommand, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ic:FluentIcon Icon="{Binding AuxButtonContent}" />
+      </Button>
+    </StackPanel>
+
+    <!-- State description -->
+    <TextBlock Grid.Row="1"
+               Text="{Binding AresStateDescription}"
+               IsVisible="{Binding !UpdateInProgress}"
+               HorizontalAlignment="Center"
+               FontSize="16"
+               Margin="0,15,0,0" />
+
+    <!-- Error message -->
+    <TextBlock Grid.Row="2"
+               Text="{Binding Error}"
+               Foreground="#FF5555"
+               FontSize="14"
+               HorizontalAlignment="Center"
+               TextWrapping="Wrap"
+               Margin="0,10,0,0" />
+
+    <!-- Progress info -->
+    <StackPanel Grid.Row="3" Orientation="Vertical" Margin="0,20,0,0" Width="250"
+                IsVisible="{Binding UpdateInProgress}">
+      <TextBlock Text="{Binding UpdateStepDescription}"
+                 HorizontalAlignment="Center"
+                 FontSize="14" Foreground="#CCCCCC" />
+      <ProgressBar Maximum="1.0" Value="{Binding Progress}" Height="8" Margin="0,8"
+                   CornerRadius="4" />
+    </StackPanel>
+  </Grid>
+</Grid>
     </TabItem>
     <TabItem Header="Configuration">
       <views:ConfigurationEditorView DataContext="{Binding Editor}" />
