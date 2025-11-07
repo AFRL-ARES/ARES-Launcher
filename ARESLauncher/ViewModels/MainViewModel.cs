@@ -1,13 +1,13 @@
-using System;
-using System.Reactive;
-using System.Reactive.Linq;
-using System.Threading.Tasks;
 using ARESLauncher.Models;
 using ARESLauncher.Services;
 using ARESLauncher.Tools;
 using NuGet.Versioning;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using System;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 
 namespace ARESLauncher.ViewModels;
 
@@ -32,6 +32,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<string?> _updateStepDescription;
   private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
   private readonly ObservableAsPropertyHelper<double> _progress;
+  private readonly ObservableAsPropertyHelper<bool> _showProgressBar;
 
   public MainViewModel(ConfigurationOverviewViewModel overview,
     ConfigurationEditorViewModel editor,
@@ -200,6 +201,11 @@ public partial class MainViewModel : ViewModelBase
         _ => throw new NotImplementedException(),
       }).ToProperty(this, vm => vm.UpdateInProgress);
 
+    _showProgressBar = this
+      .WhenAnyValue(vm => vm.CurrentUpdateStep)
+      .Select(s => s == UpdateStep.Downloading)
+      .ToProperty(this, vm => vm.ShowProgressBar);
+
     RefreshCommand = ReactiveCommand.CreateFromTask(CheckAresCondition);
     RefreshCommand.Execute();
   }
@@ -230,6 +236,8 @@ public partial class MainViewModel : ViewModelBase
 
   private async Task CheckAresCondition()
   {
+    AresConditionChecked = false;
+
     await _aresBinaryManager.Refresh();
     AresPresent = _aresBinaryManager.CurrentVersion is not null;
     if(!AresPresent)
@@ -320,6 +328,7 @@ public partial class MainViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
 
   public Interaction<Unit, Unit> ConflictDialog { get; }
+  public bool ShowProgressBar => _showProgressBar.Value;
 
   private void OnConfigurationSaved(object? sender, EventArgs e)
   {
