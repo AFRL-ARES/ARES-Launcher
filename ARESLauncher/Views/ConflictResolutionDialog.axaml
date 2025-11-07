@@ -1,16 +1,97 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
         xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
+        CanResize="False"
+        Width="500"
+        Height="450"
         x:Class="ARESLauncher.ConflictResolutionDialog"
         x:DataType="vm:ConflictResolutionDialogViewModel"
         Title="Conflict Resolution">
-  <StackPanel>
-	  <TextBlock>Placeholder for some informational text about what to do about existing running ARES (:</TextBlock>
-      <Button Command="{Binding TakeOverCommand}">Take Over</Button>
-      <Button Command="{Binding KillCommand}">Kill</Button>
-      <Button Command="{Binding IgnoreCommand}">Ignore</Button>
-  </StackPanel>
+    <Window.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="BackgroundBrush" Color="#eee" />
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="BackgroundBrush" Color="#222" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Window.Styles>
+		<Style Selector="Border.boxthingy">
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+        </Style>
+        <Style Selector="Button.warning">
+			<Setter Property="Background" Value="#ffcc00" />
+        </Style>
+        <Style Selector="Button.danger">
+			<Setter Property="Background" Value="#DC3545" />
+        </Style>
+        <Style Selector="Button.info">
+			<Setter Property="Background" Value="#4C8DFF" />
+        </Style>
+    </Window.Styles>
+    <Border Padding="30">
+      <StackPanel Spacing="16" MaxWidth="500" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <!-- Header -->
+        <TextBlock Text="⚠ Existing ARES components detected" 
+                   FontWeight="Bold" 
+                   FontSize="20" 
+                   Foreground="Orange" 
+                   TextAlignment="Center" />
+
+        <TextBlock Text="Choose how to handle the running instances below." 
+                   FontSize="14" 
+                   TextAlignment="Center" />
+
+        <!-- Take Over -->
+        <Border Padding="12" CornerRadius="8" Margin="8,0" Classes="boxthingy">
+          <StackPanel Spacing="8">
+            <Button Command="{Binding TakeOverCommand}" HorizontalAlignment="Stretch" Classes="info">
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <TextBlock Text="🔄" />
+                <TextBlock Text="Take Over" FontWeight="SemiBold" />
+              </StackPanel>
+            </Button>
+            <TextBlock TextWrapping="Wrap" FontSize="12" 
+                       Text="Internalizes the component/s as though the launcher started them. Useful if the launcher crashed or components were started manually." />
+          </StackPanel>
+        </Border>
+
+        <!-- Ignore -->
+        <Border Padding="12" CornerRadius="8" Margin="8,0" Classes="boxthingy">
+          <StackPanel Spacing="8">
+            <Button Command="{Binding IgnoreCommand}" HorizontalAlignment="Stretch" Classes="warning">
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <TextBlock Text="🚫" />
+                <TextBlock Text="Ignore" FontWeight="SemiBold" />
+              </StackPanel>
+            </Button>
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Text="Ignore existing processes. Use this when running multiple independent ARES systems on different ports — expect conflicts otherwise." />
+          </StackPanel>
+        </Border>
+
+        <!-- Kill -->
+        <Border Padding="12" CornerRadius="8" Margin="8,0" Classes="boxthingy">
+          <StackPanel Spacing="8">
+            <Button Command="{Binding KillCommand}" HorizontalAlignment="Stretch" Classes="danger">
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <TextBlock Text="🛑" />
+                <TextBlock Text="Kill" FontWeight="SemiBold" />
+              </StackPanel>
+            </Button>
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Text="Terminates the detected ARES processes. Make sure they are actually ARES components and not unrelated processes." />
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </Border>
 </Window>
