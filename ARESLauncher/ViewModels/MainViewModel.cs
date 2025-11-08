@@ -88,22 +88,31 @@ public partial class MainViewModel : ViewModelBase
     _currentUpdateStep = _aresUpdater.CurrentUpdateStep.ToProperty(this, vm => vm.CurrentUpdateStep);
     _progress = _aresUpdater.UpdateProgress.ToProperty(this, vm => vm.Progress);
 
-    _updateAvailable = this
-      .WhenAnyValue(x => x.AvailableVersions)
-      .Select(av => av is not null && _aresBinaryManager.CurrentVersion is not null && !_aresBinaryManager.CurrentVersion.IsGreatest(av))
-      .ToProperty(this, vm => vm.UpdateAvailable);
-
     _aresComponentsRunning = _aresStarter
       .AresUiRunning
       .CombineLatest(_aresStarter.AresServiceRunning, (ui, service) => (ui ? 1 : 0) + (service ? 1 : 0))
       .ToProperty(this, vm => vm.AresComponentsRunning);
 
+    _updateAvailable = this
+      .WhenAnyValue(x => x.AvailableVersions, x => x.AresComponentsRunning, (av, runnin) =>
+      {
+        var updateAvailable = av is not null && _aresBinaryManager.CurrentVersion is not null && !_aresBinaryManager.CurrentVersion.IsGreatest(av);
+        return updateAvailable && runnin == 0;
+      })
+      .ToProperty(this, vm => vm.UpdateAvailable);
+
     _aresState = this.WhenAnyValue(
       vm => vm.AresComponentsRunning,
       vm => vm.AresPresent,
       vm => vm.DatabaseStatus,
-      (isRunning, isPresent, dbStatus) =>
+      vm => vm.CurrentUpdateStep,
+      (isRunning, isPresent, dbStatus, updootStep) =>
       {
+        if(updootStep != UpdateStep.Idle)
+        {
+          return AresState.Updating;
+        }
+
         if(isRunning == 1)
         {
           return AresState.OneRunning;
@@ -213,7 +222,7 @@ public partial class MainViewModel : ViewModelBase
       .ToProperty(this, vm => vm.ShowProgressBar);
 
     _launcherReady = this
-      .WhenAnyValue(vm => vm.AresConditionChecked, vm => vm.ConflictsResolved, (chk, resolved) => chk && resolved)
+      .WhenAnyValue(vm => vm.AresConditionChecked, vm => vm.ConflictsResolved, vm => vm.AresState, (chk, resolved, state) => chk && resolved && state != AresState.Updating)
       .ToProperty(this, vm => vm.LauncherReady);
 
     RefreshCommand = ReactiveCommand.CreateFromTask(CheckAresCondition);
