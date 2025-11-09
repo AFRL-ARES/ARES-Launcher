@@ -8,24 +8,15 @@ using ARESLauncher.Models;
 using ARESLauncher.Services;
 using ARESLauncher.Services.Configuration;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace ARESLauncher.ViewModels;
 
-public class ConfigurationEditorViewModel : ViewModelBase
+public partial class ConfigurationEditorViewModel : ViewModelBase
 {
   private readonly IAppConfigurationService _configurationService;
   private readonly IAppSettingsUpdater _appSettingsUpdater;
   private readonly IReadOnlyList<DatabaseProvider> _databaseProviders;
-  private string _editableUiDataPath = string.Empty;
-  private string _editableServiceDataPath = string.Empty;
-  private string _editableRootDataPath = string.Empty;
-  private string _editableSqliteDatabasePath = string.Empty;
-  private DatabaseProvider _editableDatabaseProvider;
-  private string _editableDefaultRepoOwner = string.Empty;
-  private string _editableDefaultRepoName = string.Empty;
-  private string _editableGitToken = string.Empty;
-  private string _editableAresDataPath = string.Empty;
-  private AresSourceEditorViewModel? _selectedAvailableRepository;
 
   public ConfigurationEditorViewModel(IAppConfigurationService configurationService, IAppSettingsUpdater appSettingsUpdater)
   {
@@ -34,6 +25,17 @@ public class ConfigurationEditorViewModel : ViewModelBase
     _databaseProviders = Enum.GetValues<DatabaseProvider>();
 
     AvailableRepositories = new ObservableCollection<AresSourceEditorViewModel>();
+    EditableUiBinaryPath = string.Empty;
+    EditableServiceBinaryPath = string.Empty;
+    EditableSqliteDatabasePath = string.Empty;
+    EditableSqlServerConnectionString = string.Empty;
+    EditablePostgresConnectionString = string.Empty;
+    EditableServiceEndpoint = string.Empty;
+    EditableUiEndpoint = string.Empty;
+    EditableGitToken = string.Empty;
+    EditableAresDataPath = string.Empty;
+    EditableAresServiceProcessName = string.Empty;
+    EditableAresUiProcessName = string.Empty;
     LoadEditableConfiguration();
 
     AddRepositoryCommand = ReactiveCommand.Create(AddRepository);
@@ -49,65 +51,50 @@ public class ConfigurationEditorViewModel : ViewModelBase
 
   public ObservableCollection<AresSourceEditorViewModel> AvailableRepositories { get; }
 
-  public AresSourceEditorViewModel? SelectedAvailableRepository
-  {
-    get => _selectedAvailableRepository;
-    set => this.RaiseAndSetIfChanged(ref _selectedAvailableRepository, value);
-  }
+  [Reactive]
+  public partial AresSourceEditorViewModel? SelectedAvailableRepository { get; set; }
 
-  public string EditableUiDataPath
-  {
-    get => _editableUiDataPath;
-    set => this.RaiseAndSetIfChanged(ref _editableUiDataPath, value);
-  }
+  [Reactive]
+  public partial AresSourceEditorViewModel? SelectedCurrentRepository { get; set; }
 
-  public string EditableServiceDataPath
-  {
-    get => _editableServiceDataPath;
-    set => this.RaiseAndSetIfChanged(ref _editableServiceDataPath, value);
-  }
+  [Reactive]
+  public partial string EditableUiBinaryPath { get; set; }
 
-  public string EditableRootDataPath
-  {
-    get => _editableRootDataPath;
-    set => this.RaiseAndSetIfChanged(ref _editableRootDataPath, value);
-  }
+  [Reactive]
+  public partial string EditableServiceBinaryPath { get; set; }
 
-  public string EditableSqliteDatabasePath
-  {
-    get => _editableSqliteDatabasePath;
-    set => this.RaiseAndSetIfChanged(ref _editableSqliteDatabasePath, value);
-  }
+  [Reactive]
+  public partial string EditableSqliteDatabasePath { get; set; }
 
-  public DatabaseProvider EditableDatabaseProvider
-  {
-    get => _editableDatabaseProvider;
-    set => this.RaiseAndSetIfChanged(ref _editableDatabaseProvider, value);
-  }
+  [Reactive]
+  public partial string EditableSqlServerConnectionString { get; set; }
 
-  public string EditableDefaultRepoOwner
-  {
-    get => _editableDefaultRepoOwner;
-    set => this.RaiseAndSetIfChanged(ref _editableDefaultRepoOwner, value);
-  }
+  [Reactive]
+  public partial string EditablePostgresConnectionString { get; set; }
 
-  public string EditableDefaultRepoName
-  {
-    get => _editableDefaultRepoName;
-    set => this.RaiseAndSetIfChanged(ref _editableDefaultRepoName, value);
-  }
+  [Reactive]
+  public partial string EditableServiceEndpoint { get; set; }
 
-  public string EditableGitToken
-  {
-    get => _editableGitToken;
-    set => this.RaiseAndSetIfChanged(ref _editableGitToken, value);
-  }
+  [Reactive]
+  public partial string EditableUiEndpoint { get; set; }
 
-  public string EditableAresDataPath
-  {
-    get => _editableAresDataPath;
-    set => this.RaiseAndSetIfChanged(ref _editableAresDataPath, value);
-  }
+  [Reactive]
+  public partial DatabaseProvider EditableDatabaseProvider { get; set; }
+
+  [Reactive]
+  public partial string EditableGitToken { get; set; }
+
+  [Reactive]
+  public partial string EditableAresDataPath { get; set; }
+
+  [Reactive]
+  public partial string EditableAresServiceProcessName { get; set; }
+
+  [Reactive]
+  public partial string EditableAresUiProcessName { get; set; }
+
+  [Reactive]
+  public partial bool ShowAdvancedOptions { get; set; }
 
   public ReactiveCommand<Unit, Unit> AddRepositoryCommand { get; }
 
@@ -122,6 +109,8 @@ public class ConfigurationEditorViewModel : ViewModelBase
     var newRepository = new AresSourceEditorViewModel(string.Empty, string.Empty);
     AvailableRepositories.Add(newRepository);
     SelectedAvailableRepository = newRepository;
+
+    SelectedCurrentRepository ??= newRepository;
   }
 
   private void RemoveSelectedRepository()
@@ -131,34 +120,62 @@ public class ConfigurationEditorViewModel : ViewModelBase
       return;
     }
 
-    var index = AvailableRepositories.IndexOf(SelectedAvailableRepository);
-    AvailableRepositories.Remove(SelectedAvailableRepository);
+    var repositoryToRemove = SelectedAvailableRepository;
+    var index = AvailableRepositories.IndexOf(repositoryToRemove);
+    AvailableRepositories.Remove(repositoryToRemove);
+
+    if(repositoryToRemove == SelectedCurrentRepository)
+    {
+      SelectedCurrentRepository = AvailableRepositories.FirstOrDefault();
+    }
 
     if(AvailableRepositories.Count == 0)
     {
       SelectedAvailableRepository = null;
+      SelectedCurrentRepository = null;
       return;
     }
 
     index = Math.Clamp(index, 0, AvailableRepositories.Count - 1);
     SelectedAvailableRepository = AvailableRepositories[index];
+    SelectedCurrentRepository ??= AvailableRepositories.FirstOrDefault();
   }
 
   private void SaveConfiguration()
   {
     _configurationService.Update(configuration =>
     {
-      configuration.UiBinaryPath = EditableUiDataPath;
-      configuration.ServiceBinaryPath = EditableServiceDataPath;
+      configuration.UiBinaryPath = EditableUiBinaryPath;
+      configuration.ServiceBinaryPath = EditableServiceBinaryPath;
       configuration.SqliteDatabasePath = EditableSqliteDatabasePath;
+      configuration.SqlServerConnectionString = EditableSqlServerConnectionString;
+      configuration.PostgresConnectionString = EditablePostgresConnectionString;
       configuration.DatabaseProvider = EditableDatabaseProvider;
+      configuration.ServiceEndpoint = EditableServiceEndpoint;
+      configuration.UiEndpoint = EditableUiEndpoint;
       configuration.GitToken = EditableGitToken;
       configuration.AresDataPath = EditableAresDataPath;
-      configuration.CurrentAresRepo = new AresSource(EditableDefaultRepoOwner, EditableDefaultRepoName);
-      configuration.AvailableAresRepos = AvailableRepositories
-        .Where(repo => !string.IsNullOrWhiteSpace(repo.Owner) && !string.IsNullOrWhiteSpace(repo.Repo))
+      configuration.AresServiceProcessName = EditableAresServiceProcessName;
+      configuration.AresUiProcessName = EditableAresUiProcessName;
+
+      var validRepositories = AvailableRepositories
+        .Where(IsValidRepository)
         .Select(repo => repo.ToAresSource())
         .ToArray();
+
+      configuration.AvailableAresRepos = validRepositories;
+
+      if(validRepositories.Length > 0)
+      {
+        if(SelectedCurrentRepository is not null && IsValidRepository(SelectedCurrentRepository))
+        {
+          configuration.CurrentAresRepo = SelectedCurrentRepository.ToAresSource();
+        }
+        else
+        {
+          configuration.CurrentAresRepo = validRepositories[0];
+        }
+      }
     });
 
     LoadEditableConfiguration();
@@ -175,14 +192,18 @@ public class ConfigurationEditorViewModel : ViewModelBase
   {
     var current = _configurationService.Current;
 
-    EditableUiDataPath = current.UiBinaryPath;
-    EditableServiceDataPath = current.ServiceBinaryPath;
+    EditableUiBinaryPath = current.UiBinaryPath;
+    EditableServiceBinaryPath = current.ServiceBinaryPath;
     EditableSqliteDatabasePath = current.SqliteDatabasePath;
+    EditableSqlServerConnectionString = current.SqlServerConnectionString;
+    EditablePostgresConnectionString = current.PostgresConnectionString;
     EditableDatabaseProvider = current.DatabaseProvider;
-    EditableDefaultRepoOwner = current.CurrentAresRepo.Owner;
-    EditableDefaultRepoName = current.CurrentAresRepo.Repo;
+    EditableServiceEndpoint = current.ServiceEndpoint;
+    EditableUiEndpoint = current.UiEndpoint;
     EditableGitToken = current.GitToken;
     EditableAresDataPath = current.AresDataPath;
+    EditableAresServiceProcessName = current.AresServiceProcessName;
+    EditableAresUiProcessName = current.AresUiProcessName;
 
     AvailableRepositories.Clear();
     foreach(var repo in current.AvailableAresRepos)
@@ -191,5 +212,14 @@ public class ConfigurationEditorViewModel : ViewModelBase
     }
 
     SelectedAvailableRepository = AvailableRepositories.FirstOrDefault();
+    SelectedCurrentRepository = AvailableRepositories.FirstOrDefault(repo =>
+      string.Equals(repo.Owner, current.CurrentAresRepo.Owner, StringComparison.OrdinalIgnoreCase) &&
+      string.Equals(repo.Repo, current.CurrentAresRepo.Repo, StringComparison.OrdinalIgnoreCase))
+      ?? AvailableRepositories.FirstOrDefault();
+  }
+
+  private static bool IsValidRepository(AresSourceEditorViewModel repo)
+  {
+    return !string.IsNullOrWhiteSpace(repo.Owner) && !string.IsNullOrWhiteSpace(repo.Repo);
   }
 }

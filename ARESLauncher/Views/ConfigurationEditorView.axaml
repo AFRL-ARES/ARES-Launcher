@@ -6,134 +6,204 @@
              mc:Ignorable="d"
              x:Class="ARESLauncher.Views.ConfigurationEditorView"
              x:DataType="vm:ConfigurationEditorViewModel">
-  <ScrollViewer>
-    <StackPanel Margin="16"
-                Spacing="12">
-      <Grid ColumnDefinitions="Auto,*"
-            RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-        <TextBlock Grid.Row="0"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="UI data path:" />
-        <TextBox Grid.Row="0"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding EditableUiDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+    <ScrollViewer>
+        <StackPanel Margin="16"
+                    Spacing="12">
+            <Grid ColumnDefinitions="Auto,*"
+                  RowDefinitions="Auto,Auto,Auto">
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Margin="0,0,0,8"
+                           VerticalAlignment="Center"
+                           Text="UI binary path:" />
+                <TextBox Grid.Row="0"
+                         Grid.Column="1"
+                         Margin="12,0,0,8"
+                         Text="{Binding EditableUiBinaryPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <TextBlock Grid.Row="1"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="Service data path:" />
-        <TextBox Grid.Row="1"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding EditableServiceDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        
-        <TextBlock Grid.Row="2"
-                Grid.Column="0"
-                Margin="0,0,0,8"
-                VerticalAlignment="Center"
-                Text="Combined data path:" />
-        <TextBox Grid.Row="2"
-                Grid.Column="1"
-                Margin="12,0,0,8"
-                Text="{Binding EditableRootDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           Margin="0,0,0,8"
+                           VerticalAlignment="Center"
+                           Text="Service binary path:" />
+                <TextBox Grid.Row="1"
+                         Grid.Column="1"
+                         Margin="12,0,0,8"
+                         Text="{Binding EditableServiceBinaryPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <TextBlock Grid.Row="3"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="SQLite database path:" />
-        <TextBox Grid.Row="3"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" TextWrapping="Wrap" FontSize="10">Make sure the UI and Service path is the same if the selected ARES repo produces a combnined bundle.</TextBlock>
+            </Grid>
 
-        <TextBlock Grid.Row="4"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="Database provider:" />
-        <ComboBox Grid.Row="4"
-                  Grid.Column="1"
-                  Margin="12,0,0,8"
-                  ItemsSource="{Binding DatabaseProviders}"
-                  SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
+            <ToggleSwitch Content="Show advanced options"
+                          IsChecked="{Binding ShowAdvancedOptions, Mode=TwoWay}"
+                          HorizontalAlignment="Left" />
 
-        <TextBlock Grid.Row="5"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="Default repo owner:" />
-        <TextBox Grid.Row="5"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding EditableDefaultRepoOwner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <StackPanel Spacing="12"
+                        IsVisible="{Binding ShowAdvancedOptions}">
+                <Grid ColumnDefinitions="Auto,*"
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="SQLite database path:" />
+                    <TextBox Grid.Row="0"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <TextBlock Grid.Row="6"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="Default repo name:" />
-        <TextBox Grid.Row="6"
-                 Grid.Column="1"
-                 Margin="12,0,0,0"
-                 Text="{Binding EditableDefaultRepoName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <TextBlock Grid.Row="7"
-                   Grid.Column="0"
-                   Margin="0,0,0,8"
-                   VerticalAlignment="Center"
-                   Text="Ares Data Path:" />
-        <TextBox Grid.Row="7"
-                 Grid.Column="1"
-                 Margin="12,0,0,0"
-                 Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-      </Grid>
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="Database provider:" />
+                    <ComboBox Grid.Row="1"
+                              Grid.Column="1"
+                              Margin="12,0,0,8"
+                              ItemsSource="{Binding DatabaseProviders}"
+                              SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
 
-      <StackPanel Spacing="8">
-        <TextBlock Text="Available repositories:" />
-        <ListBox ItemsSource="{Binding AvailableRepositories}"
-                 SelectedItem="{Binding SelectedAvailableRepository, Mode=TwoWay}">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:AresSourceEditorViewModel">
-              <Grid ColumnDefinitions="*,*"
-                    Margin="0,0,0,8">
-                <TextBox Grid.Column="0"
-                         Margin="0,0,8,0"
-                         Watermark="Owner"
-                         Text="{Binding Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBox Grid.Column="1"
-                         Watermark="Repository"
-                         Text="{Binding Repo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              </Grid>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-        <StackPanel Orientation="Horizontal"
-                    Spacing="8">
-          <Button Content="Add repository"
-                  Command="{Binding AddRepositoryCommand}" />
-          <Button Content="Remove selected"
-                  Command="{Binding RemoveSelectedRepositoryCommand}" />
+                    <TextBlock Grid.Row="2"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="SQL Server connection string:" />
+                    <TextBox Grid.Row="2"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableSqlServerConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="3"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="Postgres connection string:" />
+                    <TextBox Grid.Row="3"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditablePostgresConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="4"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="Service endpoint:" />
+                    <TextBox Grid.Row="4"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableServiceEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="5"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="UI endpoint:" />
+                    <TextBox Grid.Row="5"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableUiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="6"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="ARES data path:" />
+                    <TextBox Grid.Row="6"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="7"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="ARES service process:" />
+                    <TextBox Grid.Row="7"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableAresServiceProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="8"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
+                               Text="ARES UI process:" />
+                    <TextBox Grid.Row="8"
+                             Grid.Column="1"
+                             Margin="12,0,0,0"
+                             Text="{Binding EditableAresUiProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Available repositories:" />
+                    <ListBox ItemsSource="{Binding AvailableRepositories}"
+                             SelectedItem="{Binding SelectedAvailableRepository, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AresSourceEditorViewModel">
+                                <Grid ColumnDefinitions="*,*"
+                                      Margin="0,0,0,8">
+                                    <TextBox Grid.Column="0"
+                                             Margin="0,0,8,0"
+                                             Watermark="Owner"
+                                             Text="{Binding Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Grid.Column="1"
+                                             Watermark="Repository"
+                                             Text="{Binding Repo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8">
+                        <Button Content="Add repository"
+                                Command="{Binding AddRepositoryCommand}" />
+                        <Button Content="Remove selected"
+                                Command="{Binding RemoveSelectedRepositoryCommand}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8">
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="Current repository:" />
+                        <ComboBox ItemsSource="{Binding AvailableRepositories}"
+                                  SelectedItem="{Binding SelectedCurrentRepository, Mode=TwoWay}"
+                                  MinWidth="220">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AresSourceEditorViewModel">
+                                    <TextBlock>
+                                        <Run Text="{Binding Owner}" />
+                                        <Run Text="/" />
+                                        <Run Text="{Binding Repo}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                            <ComboBox.SelectionBoxItemTemplate>
+                                <DataTemplate x:DataType="vm:AresSourceEditorViewModel">
+                                    <TextBlock>
+                                        <Run Text="{Binding Owner}" />
+                                        <Run Text="/" />
+                                        <Run Text="{Binding Repo}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ComboBox.SelectionBoxItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Git token:" />
+                    <TextBox Text="{Binding EditableGitToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PasswordChar="*" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button Content="Reset"
+                        Command="{Binding ResetConfigurationCommand}" />
+                <Button Content="Save"
+                        Command="{Binding SaveConfigurationCommand}" />
+            </StackPanel>
         </StackPanel>
-      </StackPanel>
-
-      <StackPanel>
-        <TextBlock Text="Git token:" />
-        <TextBox Text="{Binding EditableGitToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 PasswordChar="*" />
-      </StackPanel>
-
-      <StackPanel Orientation="Horizontal"
-                  HorizontalAlignment="Right"
-                  Spacing="8">
-        <Button Content="Reset"
-                Command="{Binding ResetConfigurationCommand}" />
-        <Button Content="Save"
-                Command="{Binding SaveConfigurationCommand}" />
-      </StackPanel>
-    </StackPanel>
-  </ScrollViewer>
+    </ScrollViewer>
 </UserControl>

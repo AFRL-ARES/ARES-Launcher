@@ -23,6 +23,8 @@ public class DatabaseManager(IExecutableGetter _executableGetter) : IDatabaseMan
       .WithArguments(["--migrate"])
       .WithWorkingDirectory(workingDir)
       .ExecuteAsync();
+
+    await Refresh();
   }
 
   public async Task Refresh()
