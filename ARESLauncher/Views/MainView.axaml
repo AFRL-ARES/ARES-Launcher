@@ -38,12 +38,12 @@
 	</UserControl.Styles>
     <TabControl>
         <TabItem Header="Overview">
-		    <Grid ColumnDefinitions="Auto,*">
+		    <Grid RowDefinitions="100,*">
                 <!-- Top Logo -->
-                <areslauncher:AresLogo Grid.Column="0" Height="180" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5" />
+                <areslauncher:AresLogo Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" Height="180" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,-75,5,5" />
 
                 <!-- Main Content -->
-                <Grid Grid.Column="1" RowDefinitions="*,Auto,Auto,Auto,Auto" RowSpacing="5" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400">
+                <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto,Auto" RowSpacing="5" VerticalAlignment="Top" HorizontalAlignment="Center" MaxWidth="400">
 
                     <!-- Primary and auxiliary buttons -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
