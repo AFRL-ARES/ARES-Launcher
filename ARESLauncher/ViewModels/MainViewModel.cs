@@ -289,11 +289,14 @@ public partial class MainViewModel : ViewModelBase
     {
       Error = "";
       await _aresUpdater.UpdateLatest();
-      await CheckAresCondition();
     }
     catch(Exception e)
     {
       Error = e.Message;
+    }
+    finally
+    {
+      await CheckAresCondition();
     }
   }
 
@@ -303,11 +306,14 @@ public partial class MainViewModel : ViewModelBase
     {
       Error = "";
       await _databaseManager.RunMigrations();
-      await CheckAresCondition();
     }
     catch(Exception e)
     {
       Error = e.Message;
+    }
+    finally
+    {
+      await CheckAresCondition();
     }
   }
 

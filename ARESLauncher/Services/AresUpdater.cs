@@ -108,7 +108,13 @@ public class AresUpdater : IAresUpdater
       return;
     }
 
-    var latest = versions.OrderDescending().FirstOrDefault() ?? throw new InvalidOperationException("No versions found for ARES");
+    var latest = versions.OrderDescending().FirstOrDefault();
+    if(latest is null)
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("");
+      throw new InvalidOperationException("No ARES versions found. Ensure the right repository is selected and/or your Git token is correct.");
+    }
 
     await Update(latest);
   }
