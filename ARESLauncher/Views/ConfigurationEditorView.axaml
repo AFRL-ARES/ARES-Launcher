@@ -31,7 +31,7 @@
                          Margin="12,0,0,8"
                          Text="{Binding EditableServiceBinaryPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                <TextBlock Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" TextWrapping="Wrap" FontSize="10">Make sure the UI and Service path is the same if the selected ARES repo produces a combnined bundle.</TextBlock>
+                <TextBlock Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" TextWrapping="Wrap" FontSize="10">Make sure the UI and Service path is the same if the selected ARES repo produces a combined bundle.</TextBlock>
             </Grid>
 
             <ToggleSwitch Content="Show advanced options"
