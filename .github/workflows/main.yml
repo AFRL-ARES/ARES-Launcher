@@ -45,7 +45,7 @@ jobs:
     - name: Build and Publish Self-Contained Release Artifacts
       run: |
         echo "Publishing ARES Launcher Project for ${{ matrix.os_name_tag }}  (${{ matrix.runtime_id }})"
-        dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} /p:UseAppHost=true /p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true
+        dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} -p:UseAppHost=true -p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true
 
     - name: Create ZIP Archive (Windows)
       if: runner.os == 'Windows'
