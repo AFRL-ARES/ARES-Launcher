@@ -1,33 +1,28 @@
 using ARESLauncher.Models;
-using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace ARESLauncher.ViewModels;
 
-public class AresSourceEditorViewModel : ViewModelBase
+public partial class AresSourceEditorViewModel : ViewModelBase
 {
-  private string _owner;
-  private string _repo;
-
-  public AresSourceEditorViewModel(string owner, string repo)
+  public AresSourceEditorViewModel(string owner, string repo, bool bundle = true)
   {
-    _owner = owner;
-    _repo = repo;
+    Owner = owner;
+    Repo = repo;
+    Bundle = bundle;
   }
 
-  public string Owner
-  {
-    get => _owner;
-    set => this.RaiseAndSetIfChanged(ref _owner, value);
-  }
+  [Reactive]
+  public partial string Owner { get; set; }
 
-  public string Repo
-  {
-    get => _repo;
-    set => this.RaiseAndSetIfChanged(ref _repo, value);
-  }
+  [Reactive]
+  public partial string Repo { get; set; }
+
+  [Reactive]
+  public partial bool Bundle { get; set; }
 
   public AresSource ToAresSource()
   {
-    return new AresSource(Owner, Repo);
+    return new AresSource(Owner, Repo, Bundle);
   }
 }

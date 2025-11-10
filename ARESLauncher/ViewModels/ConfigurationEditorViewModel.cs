@@ -1,14 +1,14 @@
+using ARESLauncher.Models;
+using ARESLauncher.Services;
+using ARESLauncher.Services.Configuration;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
-using ARESLauncher.Models;
-using ARESLauncher.Services;
-using ARESLauncher.Services.Configuration;
-using ReactiveUI;
-using ReactiveUI.SourceGenerators;
 
 namespace ARESLauncher.ViewModels;
 
@@ -208,7 +208,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     AvailableRepositories.Clear();
     foreach(var repo in current.AvailableAresRepos)
     {
-      AvailableRepositories.Add(new AresSourceEditorViewModel(repo.Owner, repo.Repo));
+      AvailableRepositories.Add(new AresSourceEditorViewModel(repo.Owner, repo.Repo, repo.Bundle));
     }
 
     SelectedAvailableRepository = AvailableRepositories.FirstOrDefault();

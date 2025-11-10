@@ -140,15 +140,20 @@
                              SelectedItem="{Binding SelectedAvailableRepository, Mode=TwoWay}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:AresSourceEditorViewModel">
-                                <Grid ColumnDefinitions="*,*"
+                                <Grid ColumnDefinitions="*,*,Auto"
                                       Margin="0,0,0,8">
                                     <TextBox Grid.Column="0"
                                              Margin="0,0,8,0"
                                              Watermark="Owner"
                                              Text="{Binding Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBox Grid.Column="1"
+                                             Margin="0,0,8,0"
                                              Watermark="Repository"
                                              Text="{Binding Repo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
+										<TextBlock VerticalAlignment="Center">Bundle</TextBlock>
+                                        <CheckBox IsChecked="{Binding Bundle}" />
+                                    </StackPanel>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
