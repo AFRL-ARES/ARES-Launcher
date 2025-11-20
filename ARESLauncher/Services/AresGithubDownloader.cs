@@ -1,19 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Subjects;
-using System.Threading.Tasks;
 using ARESLauncher.Models;
 using ARESLauncher.Tools;
 using Microsoft.Extensions.Logging;
 using NuGet.Versioning;
 using Octokit;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace ARESLauncher.Services;
 
-public class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAresDownloader
+public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAresDownloader
 {
-  private readonly ISubject<double> _progressSubject = new BehaviorSubject<double>(0);
+  private static readonly ApiOptions _fetchOptions = new() { PageCount = 2, PageSize = 10 };
 
   public async Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken)
   {
@@ -21,17 +21,18 @@ public class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAres
     var versions = new List<SemanticVersion>();
     try
     {
-      var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo);
+      var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo, _fetchOptions);
 
-      foreach (var release in releases)
+      foreach(var release in releases)
       {
-        var normalizedTag = TryNormalizeTag(release.TagName);
-        if (string.IsNullOrEmpty(normalizedTag)) continue;
+        var normalizedTag = TagToVersion(release.TagName);
+        if(string.IsNullOrEmpty(normalizedTag))
+          continue;
 
-        if (SemanticVersion.TryParse(normalizedTag, out var semanticVersion)) versions.Add(semanticVersion);
+        if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion)) versions.Add(semanticVersion);
       }
     }
-    catch (NotFoundException)
+    catch(NotFoundException)
     {
       _logger.LogError(
         "ARES repository not found for {SourceOwner}/{SourceRepo}. Maybe you're missing the git auth token?",
@@ -59,11 +60,11 @@ public class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAres
       : downloadResult.ResultingFilePath!;
   }
 
-  private GitHubClient CreateClient(string? authtoken)
+  private static GitHubClient CreateClient(string? authtoken)
   {
     var client = new GitHubClient(new ProductHeaderValue("ares-launcher"));
 
-    if (!string.IsNullOrEmpty(authtoken))
+    if(!string.IsNullOrEmpty(authtoken))
       client.Credentials = new Credentials(authtoken);
 
     return client;
@@ -72,36 +73,26 @@ public class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAres
   private static async Task<Release> GetReleaseForVersion(GitHubClient client, AresSource source,
     SemanticVersion version)
   {
-    foreach (var tag in EnumerateTagCandidates(version))
-      try
+    var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo, _fetchOptions);
+    foreach(var release in releases)
+    {
+      var tag = release.TagName;
+      var versionString = TagToVersion(tag);
+      var isVersion = SemanticVersion.TryParse(versionString ?? "", out var parsedVersion);
+      if(isVersion && version.Equals(parsedVersion))
       {
-        return await client.Repository.Release.Get(source.Owner, source.Repo, tag);
+        return release;
       }
-      catch (NotFoundException)
-      {
-        // Try next candidate.
-      }
+    }
 
     throw new InvalidOperationException($"Could not locate release for version {version}.");
   }
 
-  private static IEnumerable<string> EnumerateTagCandidates(SemanticVersion version)
-  {
-    var normalized = version.ToNormalizedString();
-    yield return normalized;
-    yield return $"v{normalized}";
-
-    var original = version.ToString();
-    if (!string.Equals(original, normalized, StringComparison.Ordinal)) yield return original;
-
-    var full = version.ToFullString();
-    if (!string.Equals(full, normalized, StringComparison.Ordinal) &&
-        !string.Equals(full, original, StringComparison.Ordinal)) yield return full;
-  }
-
   private static ReleaseAsset? SelectAssetForComponent(Release release, AresComponent component)
   {
-    if (release.Assets is null || release.Assets.Count == 0) return null;
+    if(release.Assets is null || release.Assets.Count == 0)
+      return null;
+
     var os = OsBundleNameGetter.GetName();
 
     var keywords = component switch
@@ -115,19 +106,24 @@ public class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAres
     var asset = release.Assets.FirstOrDefault(a =>
       keywords.All(keyword => a.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true));
 
-    if (asset is not null) return asset;
+    if(asset is not null)
+      return asset;
 
     return release.Assets.Count == 1 ? release.Assets[0] : null;
   }
 
-  private static string? TryNormalizeTag(string? tag)
+  private static string? TagToVersion(string? tag)
   {
-    if (string.IsNullOrWhiteSpace(tag)) return null;
+    if(string.IsNullOrWhiteSpace(tag))
+      return null;
 
     var trimmed = tag.Trim();
-    if (trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase) && trimmed.Length > 1 && char.IsDigit(trimmed[1]))
-      trimmed = trimmed[1..];
+    var versionMatch = VersionRegex().Match(trimmed);
+    var version = versionMatch.Groups.Values.ElementAtOrDefault(1)?.Value;
 
-    return trimmed;
+    return version;
   }
+
+  [GeneratedRegex(".*[v](.*)")]
+  private static partial Regex VersionRegex();
 }
