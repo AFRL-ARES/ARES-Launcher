@@ -4,7 +4,7 @@ ARES Launcher is a utility designed to make installing, running, and managing se
 
 ## Getting Started
 
-Visit the **Releases** page and download the latest launcher zip for your operating system. Builds are available for **Windows**, **Linux**, and **macOS (arm64)**.
+Visit the [Releases](https://github.com/AFRL-ARES/ARES-Launcher/releases) page and download the latest launcher zip for your operating system. Builds are available for **Windows**, **Linux**, and **macOS (arm64)**.
 
 After downloading, extract the zip to any folder. Inside, you will find the launcher executable.
 
