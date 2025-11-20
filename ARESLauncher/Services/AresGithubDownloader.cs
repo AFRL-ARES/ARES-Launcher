@@ -124,6 +124,6 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     return version;
   }
 
-  [GeneratedRegex(".*[v](.*)")]
+  [GeneratedRegex(".*[vV](.*)")]
   private static partial Regex VersionRegex();
 }
