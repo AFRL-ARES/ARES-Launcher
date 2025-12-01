@@ -94,10 +94,10 @@ public partial class MainViewModel : ViewModelBase
       .ToProperty(this, vm => vm.AresComponentsRunning);
 
     _updateAvailable = this
-      .WhenAnyValue(x => x.AvailableVersions, x => x.AresComponentsRunning, (av, runnin) =>
+      .WhenAnyValue(x => x.AvailableVersions, x => x.AresComponentsRunning, x => x.CurrentUpdateStep, (av, runnin, updateStep) =>
       {
         var updateAvailable = av is not null && _aresBinaryManager.CurrentVersion is not null && !_aresBinaryManager.CurrentVersion.IsGreatest(av);
-        return updateAvailable && runnin == 0;
+        return updateAvailable && runnin == 0 && updateStep == UpdateStep.Idle;
       })
       .ToProperty(this, vm => vm.UpdateAvailable);
 

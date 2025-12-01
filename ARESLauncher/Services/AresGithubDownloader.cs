@@ -38,6 +38,10 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
         "ARES repository not found for {SourceOwner}/{SourceRepo}. Maybe you're missing the git auth token?",
         source.Owner, source.Repo);
     }
+    catch(Exception e)
+    {
+      _logger.LogError("Failed to fetch releases for {SourceOwner}/{SourceRepo}. {Exception}", source.Owner, source.Repo, e);
+    }
 
     return versions.ToArray();
   }
