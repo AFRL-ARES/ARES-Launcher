@@ -10,20 +10,20 @@ After downloading, extract the zip to any folder. Inside, you will find the laun
 
 ### Windows
 
-Double‑click `ARESLauncher.Desktop.exe` to start the launcher. Windows SmartScreen may display a warning-select **More info → Run anyway** to continue.
+Double‑click `ARESLauncher.exe` to start the launcher. Windows SmartScreen may display a warning-select **More info → Run anyway** to continue.
 
 ### macOS & Linux
 
 The launcher currently isn't packaged as a native `.app` or `.desktop` bundle. After extracting, you can run it from a terminal:
 
 ```bash
-./ARESLauncher.Desktop
+./ARESLauncher
 ```
 
 You may need to set executable permissions:
 
 ```bash
-chmod +x ARESLauncher.Desktop
+chmod +x ARESLauncher
 ```
 
 ## Using the Launcher
