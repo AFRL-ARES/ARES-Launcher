@@ -225,6 +225,8 @@ public partial class MainViewModel : ViewModelBase
       .WhenAnyValue(vm => vm.AresConditionChecked, vm => vm.ConflictsResolved, vm => vm.AresState, (chk, resolved, state) => chk && resolved && state != AresState.Updating)
       .ToProperty(this, vm => vm.LauncherReady);
 
+    CheckForUpdate = ReactiveCommand.CreateFromTask(UpdateAvailableVersions);
+
     RefreshCommand = ReactiveCommand.CreateFromTask(CheckAresCondition);
     RefreshCommand.Execute();
   }
@@ -256,6 +258,12 @@ public partial class MainViewModel : ViewModelBase
   public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
   {
     return new ConflictResolutionDialogViewModel(_conflictManager);
+  }
+
+  private async Task UpdateAvailableVersions()
+  {
+    await _aresBinaryManager.Refresh();
+    AvailableVersions = await _aresUpdater.GetAvailableVersions();
   }
 
   private async Task CheckAresCondition()
@@ -356,6 +364,8 @@ public partial class MainViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
 
   public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
 
   public Interaction<Unit, Unit> ConflictDialog { get; }
   public bool ShowProgressBar => _showProgressBar.Value;
