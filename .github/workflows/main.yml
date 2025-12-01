@@ -61,8 +61,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: ${{ env.ZIP_FILE_NAME }}
-        body: |
-          Release assets for version ${{ github.event.release.tag_name }} have been automatically compiled and uploaded. Ready for QA validation.
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
