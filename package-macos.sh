@@ -2,12 +2,15 @@
 
 # Define variables
 APP_NAME="ARESLauncher.app"
-ZIP_FILE="ARESLauncher.zip"
-PUBLISH_OUTPUT_DIRECTORY="publish"
+DMG_FILE="ARESLauncher.dmg"
+DMG_VOLUME_NAME="ARES Launcher"
+PUBLISH_OUTPUT_DIRECTORY=${1:-"publish"}
+VERSION=${2:-"1.0"}
 INFO_PLIST="Info.plist"
 ICON_FILE="BlackARESLogo_Smol.icns"
-# SIGNING_IDENTITY is your Developer ID Application: Your Name (TEAMID)
-SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+
+# Update Info.plist with the new version
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$INFO_PLIST"
 
 # Remove old .app bundle if it exists
 if [ -d "$APP_NAME" ]; then
@@ -28,9 +31,18 @@ cp -a "$PUBLISH_OUTPUT_DIRECTORY/." "$APP_NAME/Contents/MacOS"
 echo "Packaged $APP_NAME successfully."
 
 # Sign the app
-# codesign --deep --force --verbose --sign "$SIGNING_IDENTITY" "$APP_NAME"
-# echo "Packaged and signed $APP_NAME successfully."
+codesign --deep --force --verbose --sign - "$APP_NAME"
+echo "Packaged and signed $APP_NAME successfully."
 
+# Create DMG
+STAGING_DIR="dmg_staging"
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+cp -R "$APP_NAME" "$STAGING_DIR/"
+ln -s /Applications "$STAGING_DIR/Applications"
 
-# Zip the .app bundle
-zip -r "$ZIP_FILE" "$APP_NAME"
+hdiutil create -volname "$DMG_VOLUME_NAME" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_FILE"
+
+rm -rf "$STAGING_DIR"
+
+echo "DMG created successfully."

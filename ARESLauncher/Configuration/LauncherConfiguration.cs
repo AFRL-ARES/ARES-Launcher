@@ -1,5 +1,5 @@
+using System;
 using System.IO;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using ARESLauncher.Models;
 
@@ -8,8 +8,7 @@ namespace ARESLauncher.Configuration;
 public class LauncherConfiguration
 {
   [JsonIgnore]
-  private static readonly string _appPath =
-    Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location) ?? Directory.GetCurrentDirectory();
+  private static readonly string _appPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ARESLauncher");
 
   public AresSource CurrentAresRepo { get; set; } = new("AFRL-ARES", "ARES");
 
