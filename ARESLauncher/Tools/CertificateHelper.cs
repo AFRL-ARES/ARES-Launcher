@@ -61,11 +61,14 @@ internal static class CertificateHelper
 
     try
     {
-      cert.FriendlyName = "ARES Certificate (localhost)";
+      if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+      {
+        cert.FriendlyName = "ARES Certificate (localhost)";
+      }
     }
     catch
     {
-      // FriendlyName may throw on non-Windows; safe to ignore.
+      // FriendlyName may throw on non-Windows; safe to ignore. Should be "caught" by the if statement, but just in case
     }
 
     var dir = Path.GetDirectoryName(certPath);
@@ -103,7 +106,7 @@ internal static class CertificateHelper
 
   private static bool WindowsCertExists(string certPath, string certPassword)
   {
-    var certToCheck = new X509Certificate2(certPath, certPassword);
+    var certToCheck = X509CertificateLoader.LoadPkcs12FromFile(certPath, certPassword);
     using var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
     store.Open(OpenFlags.ReadOnly);
     var exists = store.Certificates.Cast<X509Certificate2>()
@@ -116,7 +119,8 @@ internal static class CertificateHelper
   {
     using var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
     store.Open(OpenFlags.ReadWrite);
-    store.Add(new X509Certificate2(certPath, certPassword, X509KeyStorageFlags.PersistKeySet));
+    var cert = X509CertificateLoader.LoadPkcs12FromFile(certPath, certPassword, X509KeyStorageFlags.PersistKeySet);
+    store.Add(cert);
     store.Close();
   }
 
@@ -127,7 +131,7 @@ internal static class CertificateHelper
   private static async Task<bool> MacOsCertExists(string certPath, string certPassword)
   {
     // Build the reference hash directly from the PFX (no temp PEM needed)
-    using var desiredCert = new X509Certificate2(certPath, certPassword);
+    using var desiredCert = X509CertificateLoader.LoadPkcs12FromFile(certPath, certPassword);
     var desiredHash = desiredCert.GetCertHashString(HashAlgorithmName.SHA256);
 
     // Dump all trusted certs in user keychain
@@ -204,7 +208,7 @@ internal static class CertificateHelper
   {
     try
     {
-      using var desiredCert = new X509Certificate2(certPath);
+      using var desiredCert = X509CertificateLoader.LoadCertificateFromFile(certPath);
       var desiredHash = desiredCert.GetCertHashString(HashAlgorithmName.SHA256);
 
       var dir = "/usr/local/share/ca-certificates";
@@ -245,7 +249,7 @@ internal static class CertificateHelper
       crtPath = Path.ChangeExtension(Path.GetTempFileName(), ".crt");
 
       // Create a clean PEM certificate from the PFX using managed APIs (no bag attributes)
-      using (var cert = new X509Certificate2(certPath, certPassword))
+      using (var cert = X509CertificateLoader.LoadPkcs12FromFile(certPath, certPassword))
       {
         var der = cert.Export(X509ContentType.Cert);
         var base64 = Convert.ToBase64String(der, Base64FormattingOptions.InsertLineBreaks);

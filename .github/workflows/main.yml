@@ -27,6 +27,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       ZIP_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
+      DMG_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.dmg'
 
     steps:
     - name: Checkout Code
@@ -47,12 +48,19 @@ jobs:
         echo "Publishing ARES Launcher Project for ${{ matrix.os_name_tag }}  (${{ matrix.runtime_id }})"
         dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} -p:UseAppHost=true -p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true
 
+    - name: Package for macOS
+      if: runner.os == 'macOS'
+      run: |
+        chmod +x package-macos.sh
+        VERSION=${{ github.event.release.tag_name }}
+        ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v}
+
     - name: Create ZIP Archive (Windows)
       if: runner.os == 'Windows'
       run: 7z a -r "${{ env.ZIP_FILE_NAME }}" .\"${{ env.OUTPUT_PATH }}\*"
       
-    - name: Create ZIP Archive (Linux/macOS)
-      if: runner.os != 'Windows'
+    - name: Create ZIP Archive (Linux)
+      if: runner.os == 'Linux'
       run: |
         cd ${{ env.OUTPUT_PATH }}
         zip -r ../${{ env.ZIP_FILE_NAME }} .
@@ -60,7 +68,9 @@ jobs:
     - name: Upload Published Binaries to Release
       uses: softprops/action-gh-release@v2
       with:
-        files: ${{ env.ZIP_FILE_NAME }}
+        files: |
+          ${{ env.ZIP_FILE_NAME }}
+          ${{ env.DMG_FILE_NAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         

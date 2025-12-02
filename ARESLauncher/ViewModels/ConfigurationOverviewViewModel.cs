@@ -21,6 +21,7 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   public ConfigurationOverviewViewModel(IAppConfigurationService configurationService)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+    AresDataPath = "";
     Refresh();
   }
 
@@ -68,9 +69,6 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
 
   [Reactive]
   public partial string AresDataPath { get; private set; }
-
-  [Reactive]
-  public partial string BinariesRoot { get; private set; }
 
   public void Refresh()
   {
