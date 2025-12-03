@@ -2,48 +2,47 @@
              xmlns:areslauncher="using:ARESLauncher"
              xmlns:ic="using:FluentIcons.Avalonia"
              xmlns:avalonia="using:LoadingIndicators.Avalonia"
-             xmlns:converters="using:ARESLauncher.Views.Converters"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
              xmlns:views="clr-namespace:ARESLauncher.Views"
-			 xmlns:model="clr-namespace:ARESLauncher.Models"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ARESLauncher.Views.MainView"
              x:DataType="vm:MainViewModel">
     <UserControl.Resources>
-		<ResourceDictionary>
-			<ResourceDictionary.ThemeDictionaries>
-				<ResourceDictionary x:Key="Light">
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="BackgroundBrush" Color="#eee" />
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="BackgroundBrush" Color="#222" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
-	<UserControl.Styles>
-		<Style Selector="Button.AresButton">
-			<Setter Property="FontWeight" Value="Bold" />
-			<Setter Property="FontSize" Value="24" />
-			<Setter Property="HorizontalContentAlignment" Value="Center" />
-			<Setter Property="VerticalContentAlignment" Value="Center" />
-		</Style>
-        <Style Selector="Border.boxthingy">
-            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+    <UserControl.Styles>
+        <Style Selector="Button.AresButton">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-	</UserControl.Styles>
+        <Style Selector="Border.boxthingy">
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
+        </Style>
+    </UserControl.Styles>
     <TabControl>
         <TabItem Header="Overview">
-		    <Grid RowDefinitions="100,*,Auto">
+            <Grid RowDefinitions="100,*,Auto">
                 <!-- Top Logo -->
-                <areslauncher:AresLogo Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" Height="180" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,-75,5,5" />
+                <areslauncher:AresLogo Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" Height="180"
+                                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,-75,5,5" />
 
                 <!-- Main Content -->
-                <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto,Auto" RowSpacing="5" VerticalAlignment="Top" HorizontalAlignment="Center" MaxWidth="400">
+                <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto,Auto" RowSpacing="5" VerticalAlignment="Top"
+                      HorizontalAlignment="Center" MaxWidth="400">
 
                     <!-- Primary and auxiliary buttons -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
@@ -57,7 +56,8 @@
                                 IsVisible="{Binding !LauncherReady}"
                                 IsEnabled="False"
                                 Width="180" Height="80">
-                            <avalonia:LoadingIndicator Mode="Ring" Width="60" Height="60" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <avalonia:LoadingIndicator Mode="Ring" Width="60" Height="60" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
                         </Button>
 
                         <Button Classes="AresButton" x:Name="AuxButton"
@@ -69,30 +69,36 @@
                     </StackPanel>
 
                     <!-- State description -->
-                    <TextBlock Grid.Row="1"
-															
-                               Text="{Binding AresStateDescription}"
-                               IsVisible="{Binding !UpdateInProgress}"
-                               HorizontalAlignment="Center"
-                               FontSize="16"
-                               Margin="0,15,0,0" />
+                    <StackPanel Grid.Row="1">
+                        <TextBlock
+                            Text="{Binding AresStateDescription}"
+                            IsVisible="{Binding !UpdateInProgress}"
+                            HorizontalAlignment="Center"
+                            FontSize="16"
+                            Margin="0,15,0,0" />
+                        <StackPanel HorizontalAlignment="Center" IsVisible="{Binding ShowDisclaimer}">
+                            <TextBlock FontSize="10" TextWrapping="Wrap">Edge and Chrome might give a "Your connection isn't private" warning.</TextBlock>
+                            <TextBlock FontSize="10" TextWrapping="Wrap">Feel free to click "Advanced" and then proceed.</TextBlock>
+                        </StackPanel>
+                    </StackPanel>
 
                     <!-- Update notifier -->
-                    <Border Grid.Row="2"  Padding="12" CornerRadius="8" Margin="8,0" Classes="boxthingy" IsVisible="{Binding UpdateAvailable}">
+                    <Border Grid.Row="2" Padding="12" CornerRadius="8" Margin="8,0" Classes="boxthingy"
+                            IsVisible="{Binding UpdateAvailable}">
                         <StackPanel Spacing="8">
                             <Button Command="{Binding UpdateAresCommand}" HorizontalAlignment="Stretch" Classes="info">
                                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                                <TextBlock Text="⇧" />
-                                <TextBlock Text="Update" FontWeight="SemiBold" />
+                                    <TextBlock Text="⇧" />
+                                    <TextBlock Text="Update" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Button>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" 
-                                        Text="Update is available." />
+                            <TextBlock TextWrapping="Wrap" FontSize="12"
+                                       Text="Update is available." />
                         </StackPanel>
                     </Border>
                     <!-- Error message -->
                     <TextBlock Grid.Row="3"
-															
+
                                Text="{Binding Error}"
                                Foreground="#FF5555"
                                FontSize="14"
@@ -103,17 +109,18 @@
                     <!-- Progress info -->
                     <StackPanel Grid.Row="4" Orientation="Vertical" Margin="0,20,0,0" Width="250"
                                 IsVisible="{Binding UpdateInProgress}">
-                      <TextBlock Text="{Binding UpdateStepDescription}"
-                                 HorizontalAlignment="Center"
-                                 FontSize="14" Foreground="#CCCCCC" />
-                      <ProgressBar IsVisible="{Binding ShowProgressBar}" Maximum="1.0" Value="{Binding Progress}" Height="8" Margin="0,8"
-                                   CornerRadius="4" />
+                        <TextBlock Text="{Binding UpdateStepDescription}"
+                                   HorizontalAlignment="Center"
+                                   FontSize="14" Foreground="#CCCCCC" />
+                        <ProgressBar IsVisible="{Binding ShowProgressBar}" Maximum="1.0" Value="{Binding Progress}"
+                                     Height="8" Margin="0,8"
+                                     CornerRadius="4" />
                     </StackPanel>
                 </Grid>
-					      <Grid Margin="0,0,0,10" Grid.Row="2" HorizontalAlignment="Right">
-									<Button Command="{Binding CheckForUpdate}">Check for Update</Button>
-					      </Grid>    
-				</Grid>
+                <Grid Margin="0,0,0,10" Grid.Row="2" HorizontalAlignment="Right">
+                    <Button Command="{Binding CheckForUpdate}">Check for Update</Button>
+                </Grid>
+            </Grid>
         </TabItem>
         <TabItem Header="Configuration">
             <views:ConfigurationEditorView DataContext="{Binding Editor}" />
