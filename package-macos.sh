@@ -2,10 +2,10 @@
 
 # Define variables
 APP_NAME="ARESLauncher.app"
-DMG_FILE="ARESLauncher.dmg"
 DMG_VOLUME_NAME="ARES Launcher"
 PUBLISH_OUTPUT_DIRECTORY=${1:-"publish"}
 VERSION=${2:-"1.0"}
+DMG_FILE=${3:-"ARESLauncher.dmg"}
 INFO_PLIST="Info.plist"
 ICON_FILE="BlackARESLogo_Smol.icns"
 

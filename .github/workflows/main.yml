@@ -53,7 +53,7 @@ jobs:
       run: |
         chmod +x package-macos.sh
         VERSION=${{ github.event.release.tag_name }}
-        ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v}
+        ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v} ${{ env.DMG_FILE_NAME }}
 
     - name: Create ZIP Archive (Windows)
       if: runner.os == 'Windows'
