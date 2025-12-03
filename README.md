@@ -12,9 +12,15 @@ After downloading, extract the zip to any folder. Inside, you will find the laun
 
 Double‑click `ARESLauncher.exe` to start the launcher. Windows SmartScreen may display a warning-select **More info → Run anyway** to continue.
 
-### macOS & Linux
+### macOS (arm64)
 
-The launcher currently isn't packaged as a native `.app` or `.desktop` bundle. After extracting, you can run it from a terminal:
+Double click the downloaded .dmg file to mount the volume. Then drag the ARESLauncher application into the Applications directory.
+
+Upon starting the launcher you will be greeted with a security exception. You will just need to follow these simple steps to start it. [Running Unknown Apps](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)
+
+### Linux
+
+The launcher currently isn't packaged as a native `.desktop` bundle. After extracting, you can run it from a terminal:
 
 ```bash
 ./ARESLauncher
