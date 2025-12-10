@@ -18,10 +18,24 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
   public async Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken)
   {
     var client = CreateClient(authToken);
+    var versions = await FetchAndNormalizeVersions(client, source.Owner, source.Repo);
+    return versions.ToArray();
+  }
+
+  public async Task<SemanticVersion[]> GetAvailableVersions(LauncherSource source)
+  {
+    var client = CreateClient("");
+    var versions = await FetchAndNormalizeVersions(client, source.Owner, source.Repo);
+    return versions.ToArray();
+  }
+
+  private async Task<List<SemanticVersion>> FetchAndNormalizeVersions(GitHubClient client, string owner, string repo)
+  {
     var versions = new List<SemanticVersion>();
+
     try
     {
-      var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo, _fetchOptions);
+      var releases = await client.Repository.Release.GetAll(owner, repo, _fetchOptions);
 
       foreach(var release in releases)
       {
@@ -29,21 +43,23 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
         if(string.IsNullOrEmpty(normalizedTag))
           continue;
 
-        if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion)) versions.Add(semanticVersion);
+        if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion))
+          versions.Add(semanticVersion);
       }
     }
+
     catch(NotFoundException)
     {
       _logger.LogError(
-        "ARES repository not found for {SourceOwner}/{SourceRepo}. Maybe you're missing the git auth token?",
-        source.Owner, source.Repo);
+        "Repository not found for {SourceOwner}/{SourceRepo}. Maybe you're missing the git auth token?",
+        owner, repo);
     }
     catch(Exception e)
     {
-      _logger.LogError("Failed to fetch releases for {SourceOwner}/{SourceRepo}. {Exception}", source.Owner, source.Repo, e);
+      _logger.LogError("Failed to fetch releases for {SourceOwner}/{SourceRepo}. {Exception}", owner, repo, e);
     }
 
-    return versions.ToArray();
+    return versions;
   }
 
   public async Task<string> Download(AresSource source, SemanticVersion version, AresComponent component,

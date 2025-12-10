@@ -14,6 +14,8 @@ public interface IAresDownloader
 {
   Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken);
 
+  Task<SemanticVersion[]> GetAvailableVersions(LauncherSource soruce);
+
   /// <summary>
   /// </summary>
   /// <param name="source"></param>

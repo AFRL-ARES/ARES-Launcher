@@ -21,6 +21,7 @@ public static class ServiceCollectionExtensions
     collection.AddSingleton<IAresBinaryManager, AresBinaryManager>();
     collection.AddSingleton<IAresDownloader, AresGithubDownloader>();
     collection.AddSingleton<IAresUpdater, AresUpdater>();
+    collection.AddSingleton<ILauncherUpdater, LauncherUpdater>();
     collection.AddSingleton<IAresStarter, AresStarter>();
     collection.AddSingleton<IDatabaseManager, DatabaseManager>();
     collection.AddSingleton<IExecutableGetter, ExecutableGetter>();

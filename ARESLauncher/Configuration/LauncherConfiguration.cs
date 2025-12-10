@@ -12,6 +12,8 @@ public class LauncherConfiguration
 
   public AresSource CurrentAresRepo { get; set; } = new("AFRL-ARES", "ARES");
 
+  public LauncherSource LauncerSource { get; set; } = new("AFRL-ARES", "ARES-Launcher");
+
   public AresSource[] AvailableAresRepos { get; set; } = [new("AFRL-ARES", "ARES")];
 
   public string UiBinaryPath { get; set; } = Path.Combine(_appPath, "Binaries");

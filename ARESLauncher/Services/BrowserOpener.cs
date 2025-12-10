@@ -27,4 +27,22 @@ public class BrowserOpener(IAppConfigurationService _configurationService, ILogg
       _logger.LogError("Failed to open ARES in browser: {}", e);
     }
   }
+
+  public void Open(string url)
+  {
+    try
+    {
+      var psi = new ProcessStartInfo
+      {
+        FileName = url,
+        UseShellExecute = true
+      };
+
+      Process.Start(psi);
+    }
+    catch(Exception e)
+    {
+      _logger.LogError("Failed to open browser: {}", e);
+    }
+  }
 }

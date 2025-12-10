@@ -96,6 +96,7 @@
                                        Text="Update is available." />
                         </StackPanel>
                     </Border>
+
                     <!-- Error message -->
                     <TextBlock Grid.Row="3"
 
@@ -117,8 +118,16 @@
                                      CornerRadius="4" />
                     </StackPanel>
                 </Grid>
+                <StackPanel Grid.Row="3" HorizontalAlignment="Left" IsVisible="{Binding LauncherUpdateAvailable}">
+                    <Button Background="Red" Command="{Binding OpenLauncherReleasePageCommand}">
+			            <StackPanel Orientation="Horizontal" Spacing="8"> 
+                            <ic:SymbolIcon Symbol="ErrorCircle" FontSize="20"/>
+                            <TextBlock Text="Launcher Update Available" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
                 <Grid Margin="0,0,0,10" Grid.Row="2" HorizontalAlignment="Right">
-                    <Button Command="{Binding CheckForUpdate}">Check for Update</Button>
+                    <Button Command="{Binding CheckForUpdate}"> Check for Update </Button>
                 </Grid>
             </Grid>
         </TabItem>

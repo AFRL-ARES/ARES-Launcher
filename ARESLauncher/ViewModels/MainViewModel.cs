@@ -5,6 +5,7 @@ using NuGet.Versioning;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
@@ -21,6 +22,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<AresState> _aresState;
   private readonly ObservableAsPropertyHelper<string> _aresStateDescription;
   private readonly IAresUpdater _aresUpdater;
+  private readonly ILauncherUpdater _launcherUpdater;
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _auxButtonCommand;
   private readonly ObservableAsPropertyHelper<object?> _auxButtonContent;
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _buttonCommand;
@@ -33,6 +35,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<double> _progress;
   private readonly ObservableAsPropertyHelper<bool> _showProgressBar;
   private readonly ObservableAsPropertyHelper<bool> _updateAvailable;
+  private readonly ObservableAsPropertyHelper<bool> _launcherUpdateAvailable;
   private readonly ObservableAsPropertyHelper<bool> _updateInProgress;
   private readonly ObservableAsPropertyHelper<bool> _showDisclaimer;
   private readonly ObservableAsPropertyHelper<string?> _updateStepDescription;
@@ -45,6 +48,7 @@ public partial class MainViewModel : ViewModelBase
     IAppSettingsUpdater appSettingsUpdater,
     ICertificateManager certificateManager,
     IAresUpdater aresUpdater,
+    ILauncherUpdater launcherUpdater,
     IDatabaseManager databaseManager,
     IBrowserOpener browserOpener,
     IConflictManager conflictManager)
@@ -56,6 +60,7 @@ public partial class MainViewModel : ViewModelBase
     _appSettingsUpdater = appSettingsUpdater;
     _certificateManager = certificateManager;
     _aresUpdater = aresUpdater;
+    _launcherUpdater = launcherUpdater;
     _databaseManager = databaseManager;
     _conflictManager = conflictManager;
     _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
@@ -71,6 +76,7 @@ public partial class MainViewModel : ViewModelBase
     StopAresCommand = ReactiveCommand.CreateFromTask(aresStarter.Stop);
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
+    OpenLauncherReleasePageCommand = ReactiveCommand.Create(() => browserOpener.Open("https://github.com/AFRL-ARES/ARES-Launcher/releases"));
     ConflictDialog = new Interaction<Unit, Unit>();
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
@@ -105,39 +111,50 @@ public partial class MainViewModel : ViewModelBase
       })
       .ToProperty(this, vm => vm.UpdateAvailable);
 
-    _aresState = this.WhenAnyValue(
-    vm => vm.AresComponentsRunning,
-    vm => vm.AresPresent,
-    vm => vm.DatabaseStatus,
-    vm => vm.CurrentUpdateStep,
-    (isRunning, isPresent, dbStatus, updootStep) =>
-    {
-      if(updootStep != UpdateStep.Idle)
-      {
-        return AresState.Updating;
-      }
 
-      if(isRunning == 1)
+    _launcherUpdateAvailable = this
+      .WhenAnyValue(x => x.AvailableLauncherVersions, (av) =>
       {
-        return AresState.OneRunning;
-      }
-      if(isRunning == 2)
+        var currentLauncherVersion = LauncherVersionHelper.GetLauncherVersion();
+        var matchingSemantic = AvailableLauncherVersions?.FirstOrDefault(v => $"{v.Major}.{v.Minor}.{v.Patch}" == currentLauncherVersion);
+        bool launcherUpdateAvailable = av is not null && matchingSemantic?.IsGreatest(av) is false;
+        return launcherUpdateAvailable;
+      })
+      .ToProperty(this, ViewModels => ViewModels.LauncherUpdateAvailable);
+    
+      _aresState = this.WhenAnyValue(
+      vm => vm.AresComponentsRunning,
+      vm => vm.AresPresent,
+      vm => vm.DatabaseStatus,
+      vm => vm.CurrentUpdateStep,
+      (isRunning, isPresent, dbStatus, updootStep) =>
       {
-        return AresState.BothRunning;
-      }
+        if(updootStep != UpdateStep.Idle)
+        {
+          return AresState.Updating;
+        }
 
-      if(!isPresent)
-      {
-        return AresState.NeedsInstall;
-      }
+        if(isRunning == 1)
+        {
+          return AresState.OneRunning;
+        }
+        if(isRunning == 2)
+        {
+          return AresState.BothRunning;
+        }
 
-      if(dbStatus != DatabaseStatus.UpToDate)
-      {
-        return AresState.NeedsDbUpdate;
-      }
+        if(!isPresent)
+        {
+          return AresState.NeedsInstall;
+        }
 
-      return AresState.Ready;
-    }).ToProperty(this, vm => vm.AresState);
+        if(dbStatus != DatabaseStatus.UpToDate)
+        {
+          return AresState.NeedsDbUpdate;
+        }
+
+        return AresState.Ready;
+      }).ToProperty(this, vm => vm.AresState);
 
 
     _buttonText = this
@@ -287,8 +304,20 @@ public partial class MainViewModel : ViewModelBase
 
   public bool UpdateAvailable => _updateAvailable.Value;
 
+  public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
+
+  private async Task UpdateAvailableVersions()
+  {
+    await _aresBinaryManager.Refresh();
+    AvailableVersions = await _aresUpdater.GetAvailableVersions();
+    AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
+  }
+
   [Reactive]
   public partial SemanticVersion[]? AvailableVersions { get; private set; }
+
+  [Reactive]
+  public partial SemanticVersion[]? AvailableLauncherVersions { get; private set; }
 
   public ReactiveCommand<Unit, Unit> StartAresCommand { get; }
 
@@ -302,6 +331,8 @@ public partial class MainViewModel : ViewModelBase
 
   public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
 
+  public ReactiveCommand<Unit, Unit> OpenLauncherReleasePageCommand { get; }
+
   public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
 
   public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
@@ -312,12 +343,6 @@ public partial class MainViewModel : ViewModelBase
   public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
   {
     return new ConflictResolutionDialogViewModel(_conflictManager);
-  }
-
-  private async Task UpdateAvailableVersions()
-  {
-    await _aresBinaryManager.Refresh();
-    AvailableVersions = await _aresUpdater.GetAvailableVersions();
   }
 
   private async Task CheckAresCondition()
@@ -333,6 +358,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     AvailableVersions = await _aresUpdater.GetAvailableVersions();
+    AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
 
     await _databaseManager.Refresh();
     DatabaseStatus = _databaseManager.DatabaseStatus;
@@ -359,6 +385,19 @@ public partial class MainViewModel : ViewModelBase
     finally
     {
       await CheckAresCondition();
+    }
+  }
+
+  private async Task CheckForUpdatedLauncher()
+  {
+    try
+    {
+
+    }
+
+    catch(Exception e)
+    {
+      Error = e.Message;
     }
   }
 
