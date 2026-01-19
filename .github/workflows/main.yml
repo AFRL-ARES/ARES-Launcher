@@ -45,7 +45,7 @@ jobs:
     steps:
     - name: Setup Variables
       run: |
-        if [ "${{ github.event_name }}" == "release" ]; then
+        if: [ "${{ github.event_name }}" == "release" ]; then
           TAG="${{ github.event.release.tag_name }}"
         elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
           TAG="${{ inputs.test_version }}"
