@@ -54,7 +54,7 @@ jobs:
           TAG="${{ inputs.test_version }}"
         else
           # Fallback for 'push' trigger (Quick & Dirty testing)
-          TAG="v0.0.0-push-test"
+          TAG="v0.0.0"
         fi
         
         echo "Using Version Tag: $TAG"
