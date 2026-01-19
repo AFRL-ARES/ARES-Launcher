@@ -9,6 +9,9 @@ on:
         description: 'Test Version (e.g. v1.0.0-test)'
         required: true
         default: 'v0.0.0-test'
+  push:
+    branches:
+      - 'pipeline'
 
 env:
   PROJECT_FILE: 'ARESLauncher.Desktop/ARESLauncher.Desktop.csproj'
