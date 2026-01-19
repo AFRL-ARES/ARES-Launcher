@@ -82,15 +82,11 @@ jobs:
 
     - name: Build and Publish Self-Contained Release Artifacts
       run: |
-        TAG=${{ github.ref_name }}
+        TAG=${{ env.RELEASE_TAG }}
         VERSION=${TAG#v}
         echo "Publishing ARES Launcher Project for ${{ matrix.os_name_tag }}  (${{ matrix.runtime_id }})"
         dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} -p:UseAppHost=true -p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true /p:Version=$VERSION
 
-    # ---------------------------------------------------------
-    # PART A: PACKAGE REGULAR VERSION (Launcher Only)
-    # ---------------------------------------------------------
-    
     - name: Package for macOS
       if: runner.os == 'macOS'
       run: |
@@ -107,10 +103,6 @@ jobs:
       run: |
         cd ${{ env.OUTPUT_PATH }}
         zip -r ../${{ env.ZIP_FILE_NAME }} .
-
-    # ---------------------------------------------------------
-    # PART B: PACKAGE OFFLINE VERSION (Launcher + OS Payload)
-    # ---------------------------------------------------------
 
     - name: Prepare Offline Directory
       run: |
