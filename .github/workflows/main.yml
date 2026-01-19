@@ -75,17 +75,26 @@ jobs:
     - name: Set up .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
 
     - name: Restore Dependencies
       run: dotnet restore ${{ env.PROJECT_FILE }}
 
     - name: Build and Publish Self-Contained Release Artifacts
+      shell: bash
       run: |
         TAG=${{ env.RELEASE_TAG }}
         VERSION=${TAG#v}
         echo "Publishing ARES Launcher Project for ${{ matrix.os_name_tag }}  (${{ matrix.runtime_id }})"
-        dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} -p:UseAppHost=true -p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true /p:Version=$VERSION
+        
+        dotnet publish "${{ env.PROJECT_FILE }}" \
+          --configuration Release \
+          --output "${{ env.OUTPUT_PATH }}" \
+          -r "${{ matrix.runtime_id }}" \
+          --self-contained true \
+          -p:UseAppHost=true \
+          -p:PublishSingleFile=true \
+          -p:Version="$VERSION"
 
     - name: Package for macOS
       if: runner.os == 'macOS'
