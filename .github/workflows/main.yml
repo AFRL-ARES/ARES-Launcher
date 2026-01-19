@@ -104,10 +104,9 @@ jobs:
         ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v} ${{ env.DMG_FILE_NAME }}
 
     - name: Create ZIP Archive (Windows)
-      if: runner.os == 'Windows'
       shell: pwsh
-      run: |
-        7z a -r "$env:ZIP_FILE_NAME" "$env:OUTPUT_PATH\*
+      if: runner.os == 'Windows'
+      run: 7z a -r "${{ env.ZIP_FILE_NAME }}" .\"${{ env.OUTPUT_PATH }}\*"
       
     - name: Create ZIP Archive (Linux)
       if: runner.os == 'Linux'
