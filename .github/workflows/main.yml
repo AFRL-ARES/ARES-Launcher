@@ -26,15 +26,15 @@ jobs:
           - os: ubuntu-latest
             runtime_id: linux-x64
             os_name_tag: linux
-            payload_pattern: '*-linux.zip' 
+            payload_pattern: '*linux*' 
           - os: windows-latest
             runtime_id: win-x64
             os_name_tag: windows
-            payload_pattern: '*-windows.zip'
+            payload_pattern: '*windows*'
           - os: macos-latest
             runtime_id: osx-arm64
             os_name_tag: macos
-            payload_pattern: '*-macos.zip' 
+            payload_pattern: '*macos*' 
 
     runs-on: ${{ matrix.os }}
     defaults:
