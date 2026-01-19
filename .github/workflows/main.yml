@@ -39,15 +39,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     steps:
-    # 1. NEW STEP: Normalize the Version Tag and Filenames
-    # This handles the difference between a real release (tag exists) and a manual test (tag input)
     - name: Setup Variables
       shell: bash
       run: |
         if [ "${{ github.event_name }}" == "release" ]; then
           TAG="${{ github.event.release.tag_name }}"
-        else
+        elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
           TAG="${{ inputs.test_version }}"
+        else
+          # Fallback for 'push' trigger (Quick & Dirty testing)
+          TAG="v0.0.0-push-test"
         fi
         
         echo "Using Version Tag: $TAG"
