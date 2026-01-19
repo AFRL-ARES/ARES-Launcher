@@ -7,6 +7,7 @@ on:
 env:
   PROJECT_FILE: 'ARESLauncher.Desktop/ARESLauncher.Desktop.csproj'
   OUTPUT_PATH: 'publish' # Shared output directory for all artifacts
+  ARES_OS_REPO: 'AFRL-ARES/ARES'
 
 jobs:
   build-and-deploy:
@@ -28,6 +29,7 @@ jobs:
     env:
       ZIP_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
       DMG_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.dmg'
+      OFFLINE_ZIP_FILE_NAME: 'ARES-LAUNCHER-Offline-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
 
     steps:
     - name: Checkout Code
@@ -66,12 +68,37 @@ jobs:
       run: |
         cd ${{ env.OUTPUT_PATH }}
         zip -r ../${{ env.ZIP_FILE_NAME }} .
+
+    - name: Prepare Offline Directory
+      shell: bash
+      run: |
+        mkdir -p OfflineBuild/Offline
+        cp -r ${{ env.OUTPUT_PATH }}/* OfflineBuild/
+
+    - name: Download ARES OS Payload
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
+      run: |
+        mkdir -p external_payload
+        gh release download --repo ${{ env.ARES_OS_REPO }} --pattern "${{ matrix.payload_pattern }}" --dir external_payload
+
+    - name: Zip Offline Bundle (Windows)
+      if: runner.os == 'Windows'
+      run: 7z a -r "${{ env.OFFLINE_ZIP_FILE_NAME }}" .\OfflineBuild\*
+
+    - name: Zip Offline Bundle (Mac/Linux)
+      if: runner.os != 'Windows'
+      run: |
+        cd OfflineBuild
+        zip -r ../${{ env.OFFLINE_ZIP_FILE_NAME }} .
     
     - name: Upload Published Binaries to Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
           ${{ env.ZIP_FILE_NAME }}
+          ${{ env.OFFLINE_ZIP_FILE_NAME }}
           ${{ env.DMG_FILE_NAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
