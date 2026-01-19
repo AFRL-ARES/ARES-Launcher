@@ -16,7 +16,7 @@ on:
 env:
   PROJECT_FILE: 'ARESLauncher.Desktop/ARESLauncher.Desktop.csproj'
   OUTPUT_PATH: 'publish'
-  ARES_OS_REPO: 'AFRL-ARES/ARES-OS' 
+  ARES_OS_REPO: 'AFRL-ARES/ARES' 
 
 jobs:
   build-and-deploy:
@@ -34,7 +34,7 @@ jobs:
           - os: macos-latest
             runtime_id: osx-arm64
             os_name_tag: macos
-            payload_pattern: '*-maxos.zip' 
+            payload_pattern: '*-macos.zip' 
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -123,8 +123,8 @@ jobs:
       shell: bash
       run: |
         gh release download \
-        --repo AFRL-ARES/ARES \
-        --pattern "*windows*" \
+        --repo ${{ env.ARES_OS_REPO }} \
+        --pattern ${{ matrix.payload_pattern }} \
         --dir OfflineBuild/Offline
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
