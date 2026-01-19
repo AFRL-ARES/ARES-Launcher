@@ -119,11 +119,14 @@ jobs:
         cp -r ${{ env.OUTPUT_PATH }}/* OfflineBuild/
 
     - name: Download ARES OS Payload
+      shell: bash
+      run: |
+        gh release download \
+        --repo AFRL-ARES/ARES \
+        --pattern "*windows*"
+        --dir OfflineBuild/Offline
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # In a test run, this will download the LATEST available OS release.
-        gh release download --repo ${{ env.ARES_OS_REPO }} --pattern "${{ matrix.payload_pattern }}" --dir OfflineBuild/Offline
 
     # Explicitly use PowerShell for Windows zipping
     - name: Zip Offline Bundle (Windows)
