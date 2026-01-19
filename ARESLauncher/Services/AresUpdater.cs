@@ -61,19 +61,7 @@ public class AresUpdater : IAresUpdater
     await Unpacker.Unpack(path, dest);
     BinaryMetadataHelper.WriteMetadata(dest, source, version);
 
-    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
-    _updateStepDescriptionSubject.OnNext("Updating settings");
-    _appSettingsUpdater.UpdateAll();
-    _updateStepDescriptionSubject.OnNext("Updating certificates");
-    await _certificateManager.Update();
-    _updateStepDescriptionSubject.OnNext("Ensuring database is up to date");
-    await _databaseManager.Refresh();
-    if(_databaseManager.DatabaseStatus != DatabaseStatus.UpToDate)
-    {
-      await _databaseManager.RunMigrations();
-    }
-    _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
-    _updateStepDescriptionSubject.OnNext("");
+    await ApplyLocalSettings();
   }
 
   public async Task Update(SemanticVersion version)
@@ -105,6 +93,11 @@ public class AresUpdater : IAresUpdater
       throw;
     }
 
+    await ApplyLocalSettings();
+  }
+
+  public async Task ApplyLocalSettings()
+  {
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     _updateStepDescriptionSubject.OnNext("Updating settings");
     _appSettingsUpdater.UpdateAll();
