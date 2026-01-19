@@ -3,71 +3,106 @@ name: ARES Launcher Release Pipeline
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      test_version:
+        description: 'Test Version (e.g. v1.0.0-test)'
+        required: true
+        default: 'v0.0.0-test'
 
 env:
   PROJECT_FILE: 'ARESLauncher.Desktop/ARESLauncher.Desktop.csproj'
-  OUTPUT_PATH: 'publish' # Shared output directory for all artifacts
-  ARES_OS_REPO: 'AFRL-ARES/ARES'
+  OUTPUT_PATH: 'publish'
+  ARES_OS_REPO: 'AFRL-ARES/ARES' 
 
 jobs:
   build-and-deploy:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             runtime_id: linux-x64
             os_name_tag: linux
+            payload_pattern: '*-linux.zip' 
           - os: windows-latest
             runtime_id: win-x64
             os_name_tag: windows
+            payload_pattern: '*-windows.zip'
           - os: macos-latest
             runtime_id: osx-arm64
             os_name_tag: macos
-            
+            payload_pattern: '*-maxos.zip' 
+
     runs-on: ${{ matrix.os }}
-    env:
-      ZIP_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
-      DMG_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.dmg'
-      OFFLINE_ZIP_FILE_NAME: 'ARES-LAUNCHER-Offline-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
-
+    
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v5
-      with:
-        ref: ${{ github.event.release.tag_name }}
+    # 1. NEW STEP: Normalize the Version Tag and Filenames
+    # This handles the difference between a real release (tag exists) and a manual test (tag input)
+    - name: Setup Variables
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "release" ]; then
+          TAG="${{ github.event.release.tag_name }}"
+        else
+          TAG="${{ inputs.test_version }}"
+        fi
+        
+        echo "Using Version Tag: $TAG"
+        
+        # Calculate file names and push them to GITHUB_ENV so subsequent steps can see them
+        echo "ZIP_FILE_NAME=ARES_Launcher_${TAG}-${{ matrix.os_name_tag }}.zip" >> $GITHUB_ENV
+        echo "OFFLINE_ZIP_NAME=ARES_Launcher_${TAG}-offline-${{ matrix.os_name_tag }}.zip" >> $GITHUB_ENV
+        echo "DMG_FILE_NAME=ARES_Launcher_${TAG}-${{ matrix.os_name_tag }}.dmg" >> $GITHUB_ENV
+        echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
 
-    - name: Set up .NET 10.x
-      uses: actions/setup-dotnet@v5
+    - name: Checkout Code
+      uses: actions/checkout@v4
       with:
-        dotnet-version: '10.x'
+        # If Manual Test: Checkout the current branch/commit
+        # If Real Release: Checkout the specific Tag
+        ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
 
     - name: Restore Dependencies
       run: dotnet restore ${{ env.PROJECT_FILE }}
 
-    - name: Build and Publish Self-Contained Release Artifacts
+    # 2. UPDATED: Use env.RELEASE_TAG instead of recalculating it
+    - name: Build Launcher
       run: |
-        TAG=${{ github.ref_name }}
+        TAG=${{ env.RELEASE_TAG }}
         VERSION=${TAG#v}
-        echo "Publishing ARES Launcher Project for ${{ matrix.os_name_tag }}  (${{ matrix.runtime_id }})"
         dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} -p:UseAppHost=true -p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true /p:Version=$VERSION
 
-    - name: Package for macOS
+    # ---------------------------------------------------------
+    # PART A: PACKAGE REGULAR VERSION (Launcher Only)
+    # ---------------------------------------------------------
+    
+    - name: Package macOS (Regular)
       if: runner.os == 'macOS'
       run: |
         chmod +x package-macos.sh
-        VERSION=${{ github.event.release.tag_name }}
+        VERSION=${{ env.RELEASE_TAG }}
         ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v} ${{ env.DMG_FILE_NAME }}
+        zip -r ${{ env.ZIP_FILE_NAME }} ${{ env.OUTPUT_PATH }}
 
-    - name: Create ZIP Archive (Windows)
+    - name: Package Windows (Regular)
       if: runner.os == 'Windows'
       run: 7z a -r "${{ env.ZIP_FILE_NAME }}" .\"${{ env.OUTPUT_PATH }}\*"
-      
-    - name: Create ZIP Archive (Linux)
+
+    - name: Package Linux (Regular)
       if: runner.os == 'Linux'
       run: |
         cd ${{ env.OUTPUT_PATH }}
         zip -r ../${{ env.ZIP_FILE_NAME }} .
+        cd ..
+
+    # ---------------------------------------------------------
+    # PART B: PACKAGE OFFLINE VERSION (Launcher + OS Payload)
+    # ---------------------------------------------------------
 
     - name: Prepare Offline Directory
       shell: bash
@@ -76,31 +111,46 @@ jobs:
         cp -r ${{ env.OUTPUT_PATH }}/* OfflineBuild/
 
     - name: Download ARES OS Payload
+      shell: bash
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      shell: bash
       run: |
-        mkdir -p external_payload
-        gh release download --repo ${{ env.ARES_OS_REPO }} --pattern "${{ matrix.payload_pattern }}" --dir external_payload
+        # In a test run, this will download the LATEST available OS release.
+        gh release download --repo ${{ env.ARES_OS_REPO }} --pattern "${{ matrix.payload_pattern }}" --dir OfflineBuild/Offline
 
     - name: Zip Offline Bundle (Windows)
       if: runner.os == 'Windows'
-      run: 7z a -r "${{ env.OFFLINE_ZIP_FILE_NAME }}" .\OfflineBuild\*
+      run: 7z a -r "${{ env.OFFLINE_ZIP_NAME }}" .\OfflineBuild\*
 
     - name: Zip Offline Bundle (Mac/Linux)
       if: runner.os != 'Windows'
       run: |
         cd OfflineBuild
-        zip -r ../${{ env.OFFLINE_ZIP_FILE_NAME }} .
+        zip -r ../${{ env.OFFLINE_ZIP_NAME }} .
+
+    # ---------------------------------------------------------
+    # UPLOAD ALL ARTIFACTS
+    # ---------------------------------------------------------
     
+    # 3. UPDATED: Only run the upload step on a REAL release
     - name: Upload Published Binaries to Release
+      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
         files: |
           ${{ env.ZIP_FILE_NAME }}
-          ${{ env.OFFLINE_ZIP_FILE_NAME }}
+          ${{ env.OFFLINE_ZIP_NAME }}
           ${{ env.DMG_FILE_NAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-        
+
+    # 4. NEW: For testing, upload as Artifacts instead of Release Assets
+    - name: Upload Test Artifacts
+      if: github.event_name == 'workflow_dispatch'
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-build-${{ matrix.os_name_tag }}
+        path: |
+          ${{ env.ZIP_FILE_NAME }}
+          ${{ env.OFFLINE_ZIP_NAME }}
+          ${{ env.DMG_FILE_NAME }}
