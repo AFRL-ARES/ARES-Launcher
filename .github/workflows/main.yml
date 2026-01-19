@@ -124,7 +124,7 @@ jobs:
       run: |
         gh release download \
         --repo ${{ env.ARES_OS_REPO }} \
-        --pattern ${{ matrix.payload_pattern }} \
+        --pattern "${{ matrix.payload_pattern }}" \
         --dir OfflineBuild/Offline
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
