@@ -51,6 +51,31 @@ public class AresUpdater : IAresUpdater
     return _downloader.GetAvailableVersions(source, _configurationService.Current.GitToken);
   }
 
+  public async Task InstallOffline(string path)
+  {
+    _updateStepDescriptionSubject.OnNext("Unpacking the bundle");
+    var dest = _configurationService.Current.UiBinaryPath;
+    var source = _configurationService.Current.CurrentAresRepo;
+    var version = Tools.VersionExtensions.GetVersionFromZipName(path);  
+
+    await Unpacker.Unpack(path, dest);
+    BinaryMetadataHelper.WriteMetadata(dest, source, version);
+
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Updating settings");
+    _appSettingsUpdater.UpdateAll();
+    _updateStepDescriptionSubject.OnNext("Updating certificates");
+    await _certificateManager.Update();
+    _updateStepDescriptionSubject.OnNext("Ensuring database is up to date");
+    await _databaseManager.Refresh();
+    if(_databaseManager.DatabaseStatus != DatabaseStatus.UpToDate)
+    {
+      await _databaseManager.RunMigrations();
+    }
+    _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+    _updateStepDescriptionSubject.OnNext("");
+  }
+
   public async Task Update(SemanticVersion version)
   {
     var uiDir = _configurationService.Current.UiBinaryPath;
@@ -97,6 +122,27 @@ public class AresUpdater : IAresUpdater
 
   public async Task UpdateLatest()
   {
+    //No ARES installed, check for offline package
+    if(_binaryManager.CurrentVersion is null)
+    {
+      _updateStepDescriptionSubject.OnNext("Checking for offline bundle.");
+      _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+      var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
+      if(Directory.Exists(offlinePath))
+      {
+        var zipPath = Directory.EnumerateFiles(offlinePath, "*.zip").FirstOrDefault();
+
+        if(zipPath is not null)
+        {
+          _updateStepDescriptionSubject.OnNext("Offline installation found, preparing to install.");
+          await InstallOffline(zipPath);
+          return;
+        }
+
+        _updateStepDescriptionSubject.OnNext("No Offline Install Found");
+      }
+    }
+
     _updateStepDescriptionSubject.OnNext("Checking version");
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     var versions = await GetAvailableVersions();
