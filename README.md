@@ -32,6 +32,9 @@ You may need to set executable permissions:
 chmod +x ARESLauncher
 ```
 
+### Offline Use
+To support users requiring a completely offline installation solution, we provide an additional Offline Launcher for all three major platforms. This version offers the same functionality as the standard launcher but comes pre-packaged with the latest version of ARES. It can be installed without an internet connection, making it ideal for air-gapped environments or locations with restricted network access. These can be found alongside the regular launcher release files.
+
 ## Using the Launcher
 
 ### Installation
