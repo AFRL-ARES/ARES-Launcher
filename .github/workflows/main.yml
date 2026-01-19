@@ -37,15 +37,12 @@ jobs:
             payload_pattern: '*-maxos.zip' 
 
     runs-on: ${{ matrix.os }}
-    
-    # NEW: Set Bash as the default shell for ALL steps in this job.
-    # This prevents Windows runners from accidentally using PowerShell for variable logic.
-    defaults:
-      run:
-        shell: bash
+    env:
+      ZIP_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
+      DMG_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.dmg'
+      OFFLINE_ZIP_NAME: 'ARES-LAUNCHER-Offline-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
     
     steps:
-    # 1. NEW STEP: Normalize the Version Tag and Filenames
     - name: Setup Variables
       run: |
         if [ "${{ github.event_name }}" == "release" ]; then
@@ -80,37 +77,33 @@ jobs:
     - name: Restore Dependencies
       run: dotnet restore ${{ env.PROJECT_FILE }}
 
-    # 2. Build Launcher (Now reliably runs in Bash on all platforms)
-    - name: Build Launcher
+    - name: Build and Publish Self-Contained Release Artifacts
       run: |
-        TAG=${{ env.RELEASE_TAG }}
+        TAG=${{ github.ref_name }}
         VERSION=${TAG#v}
+        echo "Publishing ARES Launcher Project for ${{ matrix.os_name_tag }}  (${{ matrix.runtime_id }})"
         dotnet publish ${{ env.PROJECT_FILE }} --configuration Release --output ${{ env.OUTPUT_PATH }} -p:UseAppHost=true -p:PublishSingleFile=true -r ${{ matrix.runtime_id }} --self-contained true /p:Version=$VERSION
 
     # ---------------------------------------------------------
     # PART A: PACKAGE REGULAR VERSION (Launcher Only)
     # ---------------------------------------------------------
     
-    - name: Package macOS (Regular)
+    - name: Package for macOS
       if: runner.os == 'macOS'
       run: |
         chmod +x package-macos.sh
-        VERSION=${{ env.RELEASE_TAG }}
+        VERSION=${{ github.event.release.tag_name }}
         ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v} ${{ env.DMG_FILE_NAME }}
-        zip -r ${{ env.ZIP_FILE_NAME }} ${{ env.OUTPUT_PATH }}
 
-    # Explicitly use PowerShell for Windows zipping to support 7z syntax
-    - name: Package Windows (Regular)
+    - name: Create ZIP Archive (Windows)
       if: runner.os == 'Windows'
-      shell: pwsh 
       run: 7z a -r "${{ env.ZIP_FILE_NAME }}" .\"${{ env.OUTPUT_PATH }}\*"
-
-    - name: Package Linux (Regular)
+      
+    - name: Create ZIP Archive (Linux)
       if: runner.os == 'Linux'
       run: |
         cd ${{ env.OUTPUT_PATH }}
         zip -r ../${{ env.ZIP_FILE_NAME }} .
-        cd ..
 
     # ---------------------------------------------------------
     # PART B: PACKAGE OFFLINE VERSION (Launcher + OS Payload)
@@ -139,10 +132,6 @@ jobs:
       run: |
         cd OfflineBuild
         zip -r ../${{ env.OFFLINE_ZIP_NAME }} .
-
-    # ---------------------------------------------------------
-    # UPLOAD ALL ARTIFACTS
-    # ---------------------------------------------------------
     
     # 3. UPDATED: Only run the upload step on a REAL release
     - name: Upload Published Binaries to Release
