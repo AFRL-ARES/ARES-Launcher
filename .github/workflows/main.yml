@@ -3,20 +3,11 @@ name: ARES Launcher Release Pipeline
 on:
   release:
     types: [released]
-  workflow_dispatch:
-    inputs:
-      test_version:
-        description: 'Test Version (e.g. v1.0.0-test)'
-        required: true
-        default: 'v0.0.0-test'
-  push: 
-    branches:
-      - '**' 
 
 env:
   PROJECT_FILE: 'ARESLauncher.Desktop/ARESLauncher.Desktop.csproj'
   OUTPUT_PATH: 'publish'
-  ARES_OS_REPO: 'AFRL-ARES/ARES' 
+  ARES_OS_REPO: 'AFRL-ARES/ARES'
 
 jobs:
   build-and-deploy:
@@ -48,14 +39,7 @@ jobs:
     steps:
     - name: Setup Variables
       run: |
-        if [ "${{ github.event_name }}" = "release" ]; then
-          TAG="${{ github.event.release.tag_name }}"
-        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          TAG="${{ inputs.test_version }}"
-        else
-          # Fallback for 'push' trigger (Quick & Dirty testing)
-          TAG="v0.0.0"
-        fi
+        TAG="${{ github.event.release.tag_name }}"
         
         echo "Using Version Tag: $TAG"
         
@@ -68,8 +52,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        # If Manual Test or Push: Checkout the current branch/commit
-        # If Real Release: Checkout the specific Tag
         ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
 
     - name: Set up .NET
@@ -129,7 +111,6 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Explicitly use PowerShell for Windows zipping
     - name: Zip Offline Bundle (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -141,7 +122,6 @@ jobs:
         cd OfflineBuild
         zip -r ../${{ env.OFFLINE_ZIP_NAME }} .
     
-    # 3. UPDATED: Only run the upload step on a REAL release
     - name: Upload Published Binaries to Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
@@ -152,14 +132,3 @@ jobs:
           ${{ env.DMG_FILE_NAME }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # 4. NEW: For testing, upload as Artifacts instead of Release Assets
-    - name: Upload Test Artifacts
-      if: github.event_name != 'release'
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-build-${{ matrix.os_name_tag }}
-        path: |
-          ${{ env.ZIP_FILE_NAME }}
-          ${{ env.OFFLINE_ZIP_NAME }}
-          ${{ env.DMG_FILE_NAME }}
