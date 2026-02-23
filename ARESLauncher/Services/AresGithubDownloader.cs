@@ -29,6 +29,23 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     return versions.ToArray();
   }
 
+  public async Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken,
+    IProgress<double>? progress = null)
+  {
+    var client = CreateClient(authToken);
+    var release = await GetReleaseForVersion(client, source, version);
+    var asset = SelectAssetForLauncher(release) ??
+                throw new InvalidOperationException(
+                  $"No launcher asset found in release {release.TagName} for {OsBundleNameGetter.GetName()}.");
+
+    var downloadUri = new Uri(asset.Url);
+    var downloadResult = await Downloader.Download(downloadUri, destination, authToken, progress);
+
+    return !downloadResult.Success
+      ? throw new InvalidOperationException($"Failed to download launcher {version}: {downloadResult.Error}")
+      : downloadResult.ResultingFilePath!;
+  }
+
   private async Task<List<SemanticVersion>> FetchAndNormalizeVersions(GitHubClient client, string owner, string repo)
   {
     var versions = new List<SemanticVersion>();
@@ -108,6 +125,24 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     throw new InvalidOperationException($"Could not locate release for version {version}.");
   }
 
+  private static async Task<Release> GetReleaseForVersion(GitHubClient client, LauncherSource source,
+    SemanticVersion version)
+  {
+    var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo, _fetchOptions);
+    foreach(var release in releases)
+    {
+      var tag = release.TagName;
+      var versionString = TagToVersion(tag);
+      var isVersion = SemanticVersion.TryParse(versionString ?? "", out var parsedVersion);
+      if(isVersion && version.Equals(parsedVersion))
+      {
+        return release;
+      }
+    }
+
+    throw new InvalidOperationException($"Could not locate launcher release for version {version}.");
+  }
+
   private static ReleaseAsset? SelectAssetForComponent(Release release, AresComponent component)
   {
     if(release.Assets is null || release.Assets.Count == 0)
@@ -130,6 +165,35 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       return asset;
 
     return release.Assets.Count == 1 ? release.Assets[0] : null;
+  }
+
+  private static ReleaseAsset? SelectAssetForLauncher(Release release)
+  {
+    if(release.Assets is null || release.Assets.Count == 0)
+      return null;
+
+    var os = OsBundleNameGetter.GetName();
+    var candidateAssets = release.Assets
+      .Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) == true)
+      .ToArray();
+
+    if(candidateAssets.Length == 0)
+      candidateAssets = release.Assets.ToArray();
+
+    var preferred = candidateAssets.FirstOrDefault(a =>
+      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true &&
+      !a.Name!.Contains("offline", StringComparison.OrdinalIgnoreCase));
+
+    if(preferred is not null)
+      return preferred;
+
+    preferred = candidateAssets.FirstOrDefault(a =>
+      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
+
+    if(preferred is not null)
+      return preferred;
+
+    return candidateAssets.Length == 1 ? candidateAssets[0] : null;
   }
 
   private static string? TagToVersion(string? tag)

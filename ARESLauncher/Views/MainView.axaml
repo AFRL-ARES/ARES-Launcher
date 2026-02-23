@@ -119,7 +119,7 @@
                     </StackPanel>
                 </Grid>
                 <StackPanel Grid.Row="3" HorizontalAlignment="Left" IsVisible="{Binding LauncherUpdateAvailable}">
-                    <Button Background="Red" Command="{Binding OpenLauncherReleasePageCommand}">
+                    <Button Background="#FF8C00" Command="{Binding OpenLauncherReleasePageCommand}">
 			            <StackPanel Orientation="Horizontal" Spacing="8"> 
                             <ic:SymbolIcon Symbol="ErrorCircle" FontSize="20"/>
                             <TextBlock Text="Launcher Update Available" VerticalAlignment="Center"/>

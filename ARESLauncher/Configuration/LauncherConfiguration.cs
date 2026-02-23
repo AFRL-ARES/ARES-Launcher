@@ -12,7 +12,8 @@ public class LauncherConfiguration
 
   public AresSource CurrentAresRepo { get; set; } = new("AFRL-ARES", "ARES");
 
-  public LauncherSource LauncerSource { get; set; } = new("AFRL-ARES", "ARES-Launcher");
+  [JsonIgnore]
+  public LauncherSource LauncherSource { get; set; } = new("AFRL-ARES", "ARES-Launcher");
 
   public AresSource[] AvailableAresRepos { get; set; } = [new("AFRL-ARES", "ARES")];
 
