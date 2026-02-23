@@ -266,6 +266,9 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial bool ButtonEnabled { get; private set; }
 
+  [Reactive]
+  public partial bool LauncherUpdateInProgress { get; private set; }
+
   public AresState AresState => _aresState.Value;
 
   public IReactiveCommand? ButtonCommand => _buttonCommand.Value;
@@ -395,9 +398,11 @@ public partial class MainViewModel : ViewModelBase
     try
     {
       Error = "";
+      LauncherUpdateInProgress = true;
       var updateStarted = await _launcherUpdater.UpdateLatest();
       if(!updateStarted)
       {
+        LauncherUpdateInProgress = false;
         return;
       }
 
@@ -414,6 +419,7 @@ public partial class MainViewModel : ViewModelBase
 
     catch(Exception e)
     {
+      LauncherUpdateInProgress = false;
       Error = e.Message;
     }
   }
