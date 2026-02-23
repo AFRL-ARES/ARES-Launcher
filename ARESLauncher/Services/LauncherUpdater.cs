@@ -70,7 +70,8 @@ public class LauncherUpdater : ILauncherUpdater
       stagingPath,
       installDirectory,
       executablePath,
-      tempRoot);
+      tempRoot,
+      _logger);
 
     _logger.LogInformation("Launcher update to {Version} has been downloaded and staged.", latest.ToNormalizedString());
     return true;
@@ -83,108 +84,83 @@ public class LauncherUpdater : ILauncherUpdater
     File.Delete(probe);
   }
 
-  private static void StartUpdateWorker(int targetProcessId, string sourceDir, string targetDir, string executablePath, string workingDir)
+  private static void StartUpdateWorker(int targetProcessId, string sourceDir, string targetDir, string executablePath, string workingDir,
+    ILogger logger)
   {
-    if(OperatingSystem.IsWindows())
-    {
-      var scriptPath = Path.Combine(workingDir, "apply-launcher-update.ps1");
-      File.WriteAllText(scriptPath, BuildWindowsScript());
+    Directory.CreateDirectory(workingDir);
 
-      var psi = new ProcessStartInfo("powershell.exe")
-      {
-        UseShellExecute = false,
-        CreateNoWindow = true,
-        WorkingDirectory = workingDir
-      };
+    CopyBootstrapperRuntime(executablePath, targetDir, workingDir);
+    var bootstrapperPath = Path.Combine(workingDir, Path.GetFileName(executablePath));
+    EnsureExecutablePermissions(bootstrapperPath);
 
-      psi.ArgumentList.Add("-NoProfile");
-      psi.ArgumentList.Add("-ExecutionPolicy");
-      psi.ArgumentList.Add("Bypass");
-      psi.ArgumentList.Add("-File");
-      psi.ArgumentList.Add(scriptPath);
-      psi.ArgumentList.Add(targetProcessId.ToString(CultureInfo.InvariantCulture));
-      psi.ArgumentList.Add(sourceDir);
-      psi.ArgumentList.Add(targetDir);
-      psi.ArgumentList.Add(executablePath);
-
-      var process = Process.Start(psi);
-      if(process is null)
-        throw new InvalidOperationException("Failed to start the launcher update worker.");
-      return;
-    }
-
-    var shellScriptPath = Path.Combine(workingDir, "apply-launcher-update.sh");
-    File.WriteAllText(shellScriptPath, BuildUnixScript());
-    try
-    {
-      File.SetUnixFileMode(shellScriptPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-    }
-    catch(Exception)
-    {
-      // Best effort; script may still be executable depending on the environment umask.
-    }
-
-    var shellPsi = new ProcessStartInfo("/bin/bash")
+    var psi = new ProcessStartInfo(bootstrapperPath)
     {
       UseShellExecute = false,
       CreateNoWindow = true,
       WorkingDirectory = workingDir
     };
 
-    shellPsi.ArgumentList.Add(shellScriptPath);
-    shellPsi.ArgumentList.Add(targetProcessId.ToString(CultureInfo.InvariantCulture));
-    shellPsi.ArgumentList.Add(sourceDir);
-    shellPsi.ArgumentList.Add(targetDir);
-    shellPsi.ArgumentList.Add(executablePath);
+    psi.ArgumentList.Add("--apply-update");
+    psi.ArgumentList.Add("--target-pid");
+    psi.ArgumentList.Add(targetProcessId.ToString(CultureInfo.InvariantCulture));
+    psi.ArgumentList.Add("--source-dir");
+    psi.ArgumentList.Add(sourceDir);
+    psi.ArgumentList.Add("--target-dir");
+    psi.ArgumentList.Add(targetDir);
+    psi.ArgumentList.Add("--exe-path");
+    psi.ArgumentList.Add(executablePath);
 
-    var shellProcess = Process.Start(shellPsi);
-    if(shellProcess is null)
-      throw new InvalidOperationException("Failed to start the launcher update worker.");
+    var process = Process.Start(psi);
+    if(process is null)
+      throw new InvalidOperationException("Failed to start the launcher update bootstrapper.");
+
+    logger.LogInformation("Launcher bootstrapper process started. Pid: {Pid}", process.Id);
   }
 
-  private static string BuildWindowsScript()
+  private static void CopyBootstrapperRuntime(string executablePath, string installDirectory, string workingDirectory)
   {
-    return """
-           param(
-             [int]$TargetProcessId,
-             [string]$SourceDir,
-             [string]$TargetDir,
-             [string]$ExecutablePath
-           )
+    var exeName = Path.GetFileName(executablePath);
+    var copiedFiles = 0;
 
-           $ErrorActionPreference = "Stop"
+    CopyIfExists(executablePath, Path.Combine(workingDirectory, exeName), ref copiedFiles);
 
-           while (Get-Process -Id $TargetProcessId -ErrorAction SilentlyContinue) {
-             Start-Sleep -Milliseconds 300
-           }
+    var baseName = Path.GetFileNameWithoutExtension(executablePath);
+    CopyIfExists(Path.Combine(installDirectory, $"{baseName}.dll"), Path.Combine(workingDirectory, $"{baseName}.dll"), ref copiedFiles);
+    CopyIfExists(Path.Combine(installDirectory, $"{baseName}.deps.json"), Path.Combine(workingDirectory, $"{baseName}.deps.json"), ref copiedFiles);
+    CopyIfExists(Path.Combine(installDirectory, $"{baseName}.runtimeconfig.json"),
+      Path.Combine(workingDirectory, $"{baseName}.runtimeconfig.json"), ref copiedFiles);
 
-           Start-Sleep -Milliseconds 300
-           New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
-           Copy-Item -Path (Join-Path $SourceDir '*') -Destination $TargetDir -Recurse -Force
-           Start-Process -FilePath $ExecutablePath -WorkingDirectory (Split-Path -Path $ExecutablePath -Parent)
-           """;
+    foreach(var file in Directory.EnumerateFiles(installDirectory, "*.dll"))
+    {
+      var destination = Path.Combine(workingDirectory, Path.GetFileName(file));
+      CopyIfExists(file, destination, ref copiedFiles);
+    }
+
+    if(copiedFiles == 0)
+      throw new InvalidOperationException("Failed to stage launcher bootstrapper runtime files.");
   }
 
-  private static string BuildUnixScript()
+  private static void CopyIfExists(string source, string destination, ref int copiedFiles)
   {
-    return """
-           #!/usr/bin/env bash
-           set -euo pipefail
+    if(!File.Exists(source))
+      return;
 
-           TARGET_PID="$1"
-           SOURCE_DIR="$2"
-           TARGET_DIR="$3"
-           EXECUTABLE_PATH="$4"
+    File.Copy(source, destination, true);
+    copiedFiles++;
+  }
 
-           while kill -0 "$TARGET_PID" >/dev/null 2>&1; do
-             sleep 0.3
-           done
+  private static void EnsureExecutablePermissions(string executablePath)
+  {
+    if(OperatingSystem.IsWindows())
+      return;
 
-           sleep 0.3
-           mkdir -p "$TARGET_DIR"
-           cp -R "$SOURCE_DIR"/. "$TARGET_DIR"/
-           chmod +x "$EXECUTABLE_PATH" || true
-           nohup "$EXECUTABLE_PATH" >/dev/null 2>&1 &
-           """;
+    try
+    {
+      File.SetUnixFileMode(executablePath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
+    catch(Exception)
+    {
+      // Best effort; permissions can already be correct based on extraction umask.
+    }
   }
 }
