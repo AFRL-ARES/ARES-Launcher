@@ -16,6 +16,9 @@ public interface IAresDownloader
 
   Task<SemanticVersion[]> GetAvailableVersions(LauncherSource soruce);
 
+  Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken,
+    IProgress<double>? progress = null);
+
   /// <summary>
   /// </summary>
   /// <param name="source"></param>

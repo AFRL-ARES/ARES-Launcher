@@ -1,6 +1,8 @@
 using ARESLauncher.Models;
 using ARESLauncher.Services;
 using ARESLauncher.Tools;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using NuGet.Versioning;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -76,7 +78,7 @@ public partial class MainViewModel : ViewModelBase
     StopAresCommand = ReactiveCommand.CreateFromTask(aresStarter.Stop);
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
-    OpenLauncherReleasePageCommand = ReactiveCommand.Create(() => browserOpener.Open("https://github.com/AFRL-ARES/ARES-Launcher/releases"));
+    OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
     ConflictDialog = new Interaction<Unit, Unit>();
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
@@ -116,8 +118,8 @@ public partial class MainViewModel : ViewModelBase
       .WhenAnyValue(x => x.AvailableLauncherVersions, (av) =>
       {
         var currentLauncherVersion = LauncherVersionHelper.GetLauncherVersion();
-        var matchingSemantic = AvailableLauncherVersions?.FirstOrDefault(v => $"{v.Major}.{v.Minor}.{v.Patch}" == currentLauncherVersion);
-        bool launcherUpdateAvailable = av is not null && matchingSemantic?.IsGreatest(av) is false;
+        var hasCurrentVersion = SemanticVersion.TryParse(currentLauncherVersion, out var currentSemantic);
+        bool launcherUpdateAvailable = av is not null && hasCurrentVersion && currentSemantic!.IsGreatest(av) is false;
         return launcherUpdateAvailable;
       })
       .ToProperty(this, ViewModels => ViewModels.LauncherUpdateAvailable);
@@ -264,6 +266,9 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial bool ButtonEnabled { get; private set; }
 
+  [Reactive]
+  public partial bool LauncherUpdateInProgress { get; private set; }
+
   public AresState AresState => _aresState.Value;
 
   public IReactiveCommand? ButtonCommand => _buttonCommand.Value;
@@ -392,11 +397,29 @@ public partial class MainViewModel : ViewModelBase
   {
     try
     {
+      Error = "";
+      LauncherUpdateInProgress = true;
+      var updateStarted = await _launcherUpdater.UpdateLatest();
+      if(!updateStarted)
+      {
+        LauncherUpdateInProgress = false;
+        return;
+      }
 
+      if(Application.Current is App app)
+      {
+        app.BeginShutdown();
+      }
+
+      if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
+      {
+        desktopLifetime.Shutdown();
+      }
     }
 
     catch(Exception e)
     {
+      LauncherUpdateInProgress = false;
       Error = e.Message;
     }
   }

@@ -9,4 +9,6 @@ namespace ARESLauncher.Services;
 public interface ILauncherUpdater
 {
   Task<SemanticVersion[]> GetAvailableVersions();
+
+  Task<bool> UpdateLatest();
 }
