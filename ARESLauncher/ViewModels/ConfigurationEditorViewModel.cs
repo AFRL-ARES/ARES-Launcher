@@ -208,7 +208,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     AvailableRepositories.Clear();
     foreach(var repo in current.AvailableAresRepos)
     {
-      AvailableRepositories.Add(new AresSourceEditorViewModel(repo.Owner, repo.Repo, repo.Bundle));
+      AvailableRepositories.Add(new AresSourceEditorViewModel(repo.Owner, repo.Repo));
     }
 
     SelectedAvailableRepository = AvailableRepositories.FirstOrDefault();

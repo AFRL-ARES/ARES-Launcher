@@ -5,11 +5,10 @@ namespace ARESLauncher.ViewModels;
 
 public partial class AresSourceEditorViewModel : ViewModelBase
 {
-  public AresSourceEditorViewModel(string owner, string repo, bool bundle = true)
+  public AresSourceEditorViewModel(string owner, string repo)
   {
     Owner = owner;
     Repo = repo;
-    Bundle = bundle;
   }
 
   [Reactive]
@@ -18,11 +17,8 @@ public partial class AresSourceEditorViewModel : ViewModelBase
   [Reactive]
   public partial string Repo { get; set; }
 
-  [Reactive]
-  public partial bool Bundle { get; set; }
-
   public AresSource ToAresSource()
   {
-    return new AresSource(Owner, Repo, Bundle);
+    return new AresSource(Owner, Repo);
   }
 }
