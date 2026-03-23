@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="ARESLauncher.Desktop/ARESLauncher.Desktop.csproj" />
+  <Project Path="ARESLauncher.Tests/ARESLauncher.Tests.csproj" Id="86bf7481-a430-4b5d-800d-f334c6e4eb0a" />
   <Project Path="ARESLauncher/ARESLauncher.csproj" />
 </Solution>
