@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ARESLauncher.Desktop/ARESLauncher.Desktop.csproj" />
+  <Project Path="ARESLauncher/ARESLauncher.csproj" />
+</Solution>
