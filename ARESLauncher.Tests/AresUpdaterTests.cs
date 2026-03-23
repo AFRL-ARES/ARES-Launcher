@@ -66,11 +66,54 @@ public class AresUpdaterTests
       Assert.That(metadata, Is.Not.Null);
       Assert.That(metadata!.Source, Is.EqualTo(source));
       Assert.That(metadata.Version, Is.EqualTo(version.ToNormalizedString()));
+      Assert.That(metadata.Layout, Is.EqualTo(AresReleaseLayout.UnifiedUiOnly));
+      Assert.That(configuration.Current.InstalledAresLayout, Is.EqualTo(AresReleaseLayout.UnifiedUiOnly));
 
       Assert.That(appSettingsUpdater.UpdateAllCallCount, Is.EqualTo(1));
       Assert.That(certificateManager.UpdateCallCount, Is.EqualTo(1));
       Assert.That(databaseManager.RefreshCallCount, Is.EqualTo(1));
       Assert.That(databaseManager.RunMigrationsCallCount, Is.EqualTo(0));
+    }
+    finally
+    {
+      TestPaths.DeleteDirectoryIfExists(tempRoot);
+    }
+  }
+
+  [Test]
+  public async Task Update_PersistsSplitLayout_WhenServiceExecutableExists()
+  {
+    var tempRoot = TestPaths.CreateTempDirectory();
+    var uiDir = Path.Combine(tempRoot, "ui");
+
+    try
+    {
+      var archivePath = TestArchives.CreateArchive(tempRoot, "combined.zip", ("UI", "ui"), ("AresService", "svc"));
+      var source = new AresSource("AFRL-ARES", "ARES");
+      var version = new SemanticVersion(2, 0, 0);
+      var downloader = new RecordingAresDownloader(archivePath);
+      var configuration = new FakeAppConfigurationService(new LauncherConfiguration
+      {
+        CurrentAresRepo = source,
+        UiBinaryPath = uiDir,
+        ServiceBinaryPath = uiDir
+      });
+
+      var updater = new AresUpdater(
+        downloader,
+        configuration,
+        new FakeAppSettingsUpdater(),
+        new FakeCertificateManager(),
+        new FakeDatabaseManager(),
+        new FakeAresBinaryManager(),
+        NullLogger<AresUpdater>.Instance);
+
+      await updater.Update(version);
+
+      var metadata = BinaryMetadataHelper.ReadMetadata(uiDir);
+      Assert.That(metadata, Is.Not.Null);
+      Assert.That(metadata!.Layout, Is.EqualTo(AresReleaseLayout.SplitUiAndService));
+      Assert.That(configuration.Current.InstalledAresLayout, Is.EqualTo(AresReleaseLayout.SplitUiAndService));
     }
     finally
     {

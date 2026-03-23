@@ -136,11 +136,15 @@ public partial class MainViewModel : ViewModelBase
           return AresState.Updating;
         }
 
-        if(isRunning == 1)
+        var layout = _aresBinaryManager.CurrentLayout;
+        var fullyRunning = layout == AresReleaseLayout.UnifiedUiOnly ? isRunning >= 1 : isRunning == 2;
+        var partiallyRunning = layout == AresReleaseLayout.SplitUiAndService && isRunning == 1;
+
+        if(partiallyRunning)
         {
           return AresState.OneRunning;
         }
-        if(isRunning == 2)
+        if(fullyRunning)
         {
           return AresState.BothRunning;
         }

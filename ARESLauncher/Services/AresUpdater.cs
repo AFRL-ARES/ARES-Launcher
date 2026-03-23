@@ -59,7 +59,9 @@ public class AresUpdater : IAresUpdater
     var version = Tools.VersionExtensions.GetVersionFromZipName(path);  
 
     await Unpacker.Unpack(path, dest);
-    BinaryMetadataHelper.WriteMetadata(dest, source, version);
+    var layout = DetectInstalledLayout(dest);
+    _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
+    BinaryMetadataHelper.WriteMetadata(dest, source, version, layout);
 
     await ApplyLocalSettings();
   }
@@ -81,7 +83,8 @@ public class AresUpdater : IAresUpdater
     _currentUpdateStepSubject.OnNext(UpdateStep.Downloading);
     try
     {
-      await DownloadPackage(source, version, uiDir);
+      var layout = await DownloadPackage(source, version, uiDir);
+      _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
     }
     catch(Exception)
     {
@@ -159,7 +162,7 @@ public class AresUpdater : IAresUpdater
   public IObservable<double> UpdateProgress { get; }
   public IObservable<UpdateStep> CurrentUpdateStep { get; }
 
-  private async Task DownloadPackage(AresSource source, SemanticVersion version, string dest)
+  private async Task<AresReleaseLayout> DownloadPackage(AresSource source, SemanticVersion version, string dest)
   {
     var tempPath = Path.GetTempPath();
     try
@@ -169,12 +172,27 @@ public class AresUpdater : IAresUpdater
         new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
       _updateStepDescriptionSubject.OnNext("Unpacking the package");
       await Unpacker.Unpack(packageDest, dest);
-      BinaryMetadataHelper.WriteMetadata(dest, source, version);
+      var layout = DetectInstalledLayout(dest);
+      BinaryMetadataHelper.WriteMetadata(dest, source, version, layout);
+      return layout;
     }
     catch(Exception e)
     {
       _logger.LogError("Failed to acquire the ARES package. {}", e);
       throw;
     }
+  }
+
+  private static AresReleaseLayout DetectInstalledLayout(string installDirectory)
+  {
+    var serviceExecutable = Path.Combine(installDirectory, "AresService");
+    if(OperatingSystem.IsWindows())
+    {
+      serviceExecutable = Path.ChangeExtension(serviceExecutable, "exe");
+    }
+
+    return File.Exists(serviceExecutable)
+      ? AresReleaseLayout.SplitUiAndService
+      : AresReleaseLayout.UnifiedUiOnly;
   }
 }

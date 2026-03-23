@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using ARESLauncher.Models;
 using ARESLauncher.Services.Configuration;
 
 namespace ARESLauncher.Services;
@@ -13,6 +14,11 @@ public class ExecutableGetter(IAppConfigurationService _configurationService) : 
 
   public string? GetServiceExecutablePath()
   {
+    if(_configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly)
+    {
+      return null;
+    }
+
     return GetPath(_configurationService.Current.ServiceBinaryPath, "AresService");
   }
 

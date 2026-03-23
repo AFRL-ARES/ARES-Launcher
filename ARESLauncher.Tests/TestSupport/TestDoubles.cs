@@ -109,6 +109,7 @@ internal sealed class FakeAresBinaryManager : IAresBinaryManager
   public AppSettingsService? ServiceSettings => null;
   public AppSettingsUi? UiSettings => null;
   public AresSource? CurrentSource => null;
+  public AresReleaseLayout CurrentLayout { get; set; } = AresReleaseLayout.SplitUiAndService;
 
   public Task Refresh()
   {

@@ -5,6 +5,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
+using ARESLauncher.Models;
 using CliWrap;
 using CliWrap.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ namespace ARESLauncher.Services;
 
 public class AresStarter : IAresStarter
 {
+  private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IExecutableGetter _executableGetter;
   private readonly ILogger<AresStarter> _logger;
   private readonly BehaviorSubject<bool> _aresUiRunningSubject = new(false);
@@ -24,8 +26,9 @@ public class AresStarter : IAresStarter
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
 
-  public AresStarter(IExecutableGetter executableGetter, ILogger<AresStarter> logger)
+  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, ILogger<AresStarter> logger)
   {
+    _aresBinaryManager = aresBinaryManager;
     _executableGetter = executableGetter;
     _logger = logger;
     AresUiRunning = _aresUiRunningSubject.AsObservable();
@@ -37,7 +40,7 @@ public class AresStarter : IAresStarter
 
   public void Start()
   {
-    if(_aresUiRunningSubject.Value && _aresServiceRunningSubject.Value)
+    if(IsHealthyRunning())
     {
       _logger.LogDebug("Start requested while ARES is already running. Skipping.");
       return;
@@ -55,7 +58,7 @@ public class AresStarter : IAresStarter
       }
     }
 
-    if(!_aresServiceRunningSubject.Value)
+    if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService && !_aresServiceRunningSubject.Value)
     {
       var serviceTask = StartService(_cancellationTokenSource.Token);
       if(serviceTask is null)
@@ -213,5 +216,12 @@ public class AresStarter : IAresStarter
     {
       _ = Stop();
     }
+  }
+
+  private bool IsHealthyRunning()
+  {
+    return _aresBinaryManager.CurrentLayout == AresReleaseLayout.UnifiedUiOnly
+      ? _aresUiRunningSubject.Value
+      : _aresUiRunningSubject.Value && _aresServiceRunningSubject.Value;
   }
 }

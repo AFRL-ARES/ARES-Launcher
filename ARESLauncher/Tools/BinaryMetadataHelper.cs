@@ -15,7 +15,7 @@ public static class BinaryMetadataHelper
     WriteIndented = true
   };
 
-  public static void WriteMetadata(string directory, AresSource source, SemanticVersion version)
+  public static void WriteMetadata(string directory, AresSource source, SemanticVersion version, AresReleaseLayout layout)
   {
     if (string.IsNullOrWhiteSpace(directory)) return;
 
@@ -23,7 +23,8 @@ public static class BinaryMetadataHelper
     var metadata = new AresBinaryMetadata
     {
       Source = source,
-      Version = version.ToNormalizedString()
+      Version = version.ToNormalizedString(),
+      Layout = layout
     };
 
     try

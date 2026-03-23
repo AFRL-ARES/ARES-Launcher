@@ -1,4 +1,5 @@
 using ARESLauncher.Configuration;
+using ARESLauncher.Models;
 using ARESLauncher.Tools;
 using System.Text.Json;
 
@@ -42,6 +43,7 @@ public class LegacyBundleCompatibilityTests
     Assert.That(configuration.AvailableAresRepos, Has.Length.EqualTo(2));
     Assert.That(configuration.AvailableAresRepos[1].Owner, Is.EqualTo("Example"));
     Assert.That(configuration.AvailableAresRepos[1].Repo, Is.EqualTo("Fork"));
+    Assert.That(configuration.InstalledAresLayout, Is.EqualTo(AresReleaseLayout.SplitUiAndService));
 
     var rewrittenJson = JsonSerializer.Serialize(configuration);
 
@@ -75,6 +77,7 @@ public class LegacyBundleCompatibilityTests
       Assert.That(metadata.Source!.Owner, Is.EqualTo("AFRL-ARES"));
       Assert.That(metadata.Source.Repo, Is.EqualTo("ARES"));
       Assert.That(metadata.Version, Is.EqualTo("1.2.3"));
+      Assert.That(metadata.Layout, Is.Null);
     }
     finally
     {

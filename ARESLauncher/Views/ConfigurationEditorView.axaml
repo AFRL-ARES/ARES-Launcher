@@ -41,7 +41,7 @@
             <StackPanel Spacing="12"
                         IsVisible="{Binding ShowAdvancedOptions}">
                 <Grid ColumnDefinitions="Auto,*"
-                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
                                Margin="0,0,0,8"
@@ -127,8 +127,19 @@
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
+                               Text="Installed ARES layout:" />
+                    <ComboBox Grid.Row="8"
+                              Grid.Column="1"
+                              Margin="12,0,0,8"
+                              ItemsSource="{Binding ReleaseLayouts}"
+                              SelectedItem="{Binding EditableInstalledAresLayout, Mode=TwoWay}" />
+
+                    <TextBlock Grid.Row="9"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
                                Text="ARES UI process:" />
-                    <TextBox Grid.Row="8"
+                    <TextBox Grid.Row="9"
                              Grid.Column="1"
                              Margin="12,0,0,0"
                              Text="{Binding EditableAresUiProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

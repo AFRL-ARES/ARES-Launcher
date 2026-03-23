@@ -17,12 +17,14 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   private readonly IAppConfigurationService _configurationService;
   private readonly IAppSettingsUpdater _appSettingsUpdater;
   private readonly IReadOnlyList<DatabaseProvider> _databaseProviders;
+  private readonly IReadOnlyList<AresReleaseLayout> _releaseLayouts;
 
   public ConfigurationEditorViewModel(IAppConfigurationService configurationService, IAppSettingsUpdater appSettingsUpdater)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
     _appSettingsUpdater = appSettingsUpdater;
     _databaseProviders = Enum.GetValues<DatabaseProvider>();
+    _releaseLayouts = Enum.GetValues<AresReleaseLayout>();
 
     AvailableRepositories = new ObservableCollection<AresSourceEditorViewModel>();
     EditableUiBinaryPath = string.Empty;
@@ -36,6 +38,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresDataPath = string.Empty;
     EditableAresServiceProcessName = string.Empty;
     EditableAresUiProcessName = string.Empty;
+    EditableInstalledAresLayout = AresReleaseLayout.SplitUiAndService;
     LoadEditableConfiguration();
 
     AddRepositoryCommand = ReactiveCommand.Create(AddRepository);
@@ -48,6 +51,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   public event EventHandler? ConfigurationSaved;
 
   public IReadOnlyList<DatabaseProvider> DatabaseProviders => _databaseProviders;
+  public IReadOnlyList<AresReleaseLayout> ReleaseLayouts => _releaseLayouts;
 
   public ObservableCollection<AresSourceEditorViewModel> AvailableRepositories { get; }
 
@@ -92,6 +96,9 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
 
   [Reactive]
   public partial string EditableAresUiProcessName { get; set; }
+
+  [Reactive]
+  public partial AresReleaseLayout EditableInstalledAresLayout { get; set; }
 
   [Reactive]
   public partial bool ShowAdvancedOptions { get; set; }
@@ -157,6 +164,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
       configuration.AresDataPath = EditableAresDataPath;
       configuration.AresServiceProcessName = EditableAresServiceProcessName;
       configuration.AresUiProcessName = EditableAresUiProcessName;
+      configuration.InstalledAresLayout = EditableInstalledAresLayout;
 
       var validRepositories = AvailableRepositories
         .Where(IsValidRepository)
@@ -204,6 +212,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresDataPath = current.AresDataPath;
     EditableAresServiceProcessName = current.AresServiceProcessName;
     EditableAresUiProcessName = current.AresUiProcessName;
+    EditableInstalledAresLayout = current.InstalledAresLayout;
 
     AvailableRepositories.Clear();
     foreach(var repo in current.AvailableAresRepos)

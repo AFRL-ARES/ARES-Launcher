@@ -34,6 +34,11 @@ public interface IAresBinaryManager
   AresSource? CurrentSource { get; }
 
   /// <summary>
+  ///   The effective installed ARES release layout.
+  /// </summary>
+  AresReleaseLayout CurrentLayout { get; }
+
+  /// <summary>
   ///   Refreshes its knowledge about the current and available versions of ARES.
   /// </summary>
   /// <returns></returns>
