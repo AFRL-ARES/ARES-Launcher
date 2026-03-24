@@ -21,6 +21,7 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   public ConfigurationOverviewViewModel(IAppConfigurationService configurationService)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+    InstalledAresLayout = string.Empty;
     AresDataPath = "";
     Refresh();
   }

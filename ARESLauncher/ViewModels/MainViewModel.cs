@@ -66,6 +66,7 @@ public partial class MainViewModel : ViewModelBase
     _databaseManager = databaseManager;
     _conflictManager = conflictManager;
     _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+    InstalledAresVersion = string.Empty;
     Editor.ConfigurationSaved += OnConfigurationSaved;
 
     UpdateDatabaseCommand = ReactiveCommand.CreateFromTask(UpdateDb);
@@ -305,6 +306,9 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial DatabaseStatus DatabaseStatus { get; private set; }
 
+  [Reactive]
+  public partial string InstalledAresVersion { get; private set; }
+
   public string AresStateDescription => _aresStateDescription.Value;
 
   public int AresComponentsRunning => _aresComponentsRunning.Value;
@@ -318,6 +322,7 @@ public partial class MainViewModel : ViewModelBase
   private async Task UpdateAvailableVersions()
   {
     await _aresBinaryManager.Refresh();
+    InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
     AvailableVersions = await _aresUpdater.GetAvailableVersions();
     AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
   }
@@ -359,6 +364,7 @@ public partial class MainViewModel : ViewModelBase
     AresConditionChecked = false;
 
     await _aresBinaryManager.Refresh();
+    InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
     AresPresent = _aresBinaryManager.CurrentVersion is not null;
     if(!AresPresent)
     {
