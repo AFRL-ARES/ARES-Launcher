@@ -81,6 +81,7 @@ public partial class MainViewModel : ViewModelBase
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
     OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
+    UpdateConfirmationDialog = new Interaction<UpdateConfirmationRequest, bool>();
     ConflictDialog = new Interaction<Unit, Unit>();
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
@@ -357,6 +358,7 @@ public partial class MainViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
 
   public Interaction<Unit, Unit> ConflictDialog { get; }
+  public Interaction<UpdateConfirmationRequest, bool> UpdateConfirmationDialog { get; }
   public bool ShowProgressBar => _showProgressBar.Value;
 
   public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
@@ -394,6 +396,22 @@ public partial class MainViewModel : ViewModelBase
 
   private async Task UpdateAres()
   {
+    var currentVersion = _aresBinaryManager.CurrentVersion;
+    var targetVersion = AvailableVersions?.OrderDescending().FirstOrDefault();
+    if(RequiresUpdateConfirmation(currentVersion, targetVersion))
+    {
+      var shouldProceed = await UpdateConfirmationDialog.Handle(new UpdateConfirmationRequest
+      {
+        CurrentVersion = currentVersion!,
+        TargetVersion = targetVersion!
+      });
+
+      if(!shouldProceed)
+      {
+        return;
+      }
+    }
+
     try
     {
       Error = "";
@@ -461,5 +479,22 @@ public partial class MainViewModel : ViewModelBase
   {
     Overview.Refresh();
     _ = CheckAresCondition();
+  }
+  
+  // Check if we should ask for confirmation. We should ask if there's a major/minor update
+  // Let's ignore patches as those should not break things... should
+  private static bool RequiresUpdateConfirmation(SemanticVersion? currentVersion, SemanticVersion? targetVersion)
+  {
+    if(currentVersion is null || targetVersion is null)
+    {
+      return false;
+    }
+
+    if(targetVersion.Major > currentVersion.Major)
+    {
+      return true;
+    }
+
+    return targetVersion.Major == currentVersion.Major && targetVersion.Minor > currentVersion.Minor;
   }
 }
