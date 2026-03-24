@@ -77,6 +77,12 @@
                             HorizontalAlignment="Center"
                             FontSize="16"
                             Margin="0,15,0,0" />
+                            <TextBlock
+                            Text="{Binding InstalledAresVersion, StringFormat='ARES version: {0}'}"
+                            IsVisible="{Binding InstalledAresVersion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            HorizontalAlignment="Center"
+                            FontSize="13"
+                            Margin="0,4,0,0" />
                             <StackPanel HorizontalAlignment="Center" IsVisible="{Binding ShowDisclaimer}">
                                 <TextBlock FontSize="10" TextWrapping="Wrap">Edge and Chrome might give a "Your connection isn't private" warning.</TextBlock>
                                 <TextBlock FontSize="10" TextWrapping="Wrap">Feel free to click "Advanced" and then proceed.</TextBlock>
@@ -84,7 +90,7 @@
                         </StackPanel>
 
                         <!-- Update notifier -->
-                        <Border Grid.Row="2" Padding="12" CornerRadius="8" Margin="8,0" Classes="boxthingy"
+                        <Border Grid.Row="2" Padding="8" CornerRadius="8" Margin="8,0" Classes="boxthingy"
                                 IsVisible="{Binding UpdateAvailable}">
                             <StackPanel Spacing="8">
                                 <Button Command="{Binding UpdateAresCommand}" HorizontalAlignment="Stretch" Classes="info">
@@ -94,7 +100,8 @@
                                     </StackPanel>
                                 </Button>
                                 <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Text="Update is available." />
+                                           TextAlignment="Center"
+                                           Text="{Binding AvailableAresUpdateVersion, StringFormat='Update available: {0}'}" />
                             </StackPanel>
                         </Border>
 

@@ -1,15 +1,19 @@
 ﻿using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using ARESLauncher.Models;
 using ARESLauncher.Services.Configuration;
 
 namespace ARESLauncher.Services;
 
-public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService _configurationService) : IConflictManager
+public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService _configurationService, IAresBinaryManager _aresBinaryManager) : IConflictManager
 {
 
   public bool FindPotentialService()
   {
+    if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.UnifiedUiOnly)
+      return false;
+
     var process = GetServiceProcess();
     return process is not null; ;
   }
@@ -23,7 +27,9 @@ public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService
   public async Task Kill()
   {
     var uiProcess = GetUiProcess();
-    var serviceProcess = GetServiceProcess();
+    var serviceProcess = _aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService
+      ? GetServiceProcess()
+      : null;
     if(uiProcess is not null)
     {
       uiProcess.Kill();
@@ -39,6 +45,9 @@ public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService
 
   public void TakeOverService()
   {
+    if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.UnifiedUiOnly)
+      return;
+
     var process = GetServiceProcess();
     if(process is null)
       return;

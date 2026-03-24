@@ -20,13 +20,8 @@ public interface IAresDownloader
     IProgress<double>? progress = null);
 
   /// <summary>
+  ///   Downloads the combined ARES release package for the requested version.
   /// </summary>
-  /// <param name="source"></param>
-  /// <param name="version"></param>
-  /// <param name="component"></param>
-  /// <param name="destination"></param>
-  /// <param name="progress"></param>
-  /// <returns>The file path of the newly downloaded item</returns>
-  Task<string> Download(AresSource source, SemanticVersion version, AresComponent component, string destination, string? authToken,
+  Task<string> Download(AresSource source, SemanticVersion version, string destination, string? authToken,
     IProgress<double>? progress = null);
 }

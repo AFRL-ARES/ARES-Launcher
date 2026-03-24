@@ -79,21 +79,21 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     return versions;
   }
 
-  public async Task<string> Download(AresSource source, SemanticVersion version, AresComponent component,
+  public async Task<string> Download(AresSource source, SemanticVersion version,
     string destination, string? authToken, IProgress<double>? progress = null)
   {
     var client = CreateClient(authToken);
     var release = await GetReleaseForVersion(client, source, version);
-    var asset = SelectAssetForComponent(release, component) ??
+    var asset = SelectAssetForAresRelease(release) ??
                 throw new InvalidOperationException(
-                  $"No asset found in release {release.TagName} for component {component}.");
+                  $"No ARES asset found in release {release.TagName} for {OsBundleNameGetter.GetName()}.");
 
     var downloadUri = new Uri(asset.Url);
     var downloadResult = await Downloader.Download(downloadUri, destination, authToken, progress);
 
     // Technically ResultingFilePath could be null, but if our download result is a success, there's no reason it should.
     return !downloadResult.Success
-      ? throw new InvalidOperationException($"Failed to download {component} {version}: {downloadResult.Error}")
+      ? throw new InvalidOperationException($"Failed to download ARES {version}: {downloadResult.Error}")
       : downloadResult.ResultingFilePath!;
   }
 
@@ -143,28 +143,33 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     throw new InvalidOperationException($"Could not locate launcher release for version {version}.");
   }
 
-  private static ReleaseAsset? SelectAssetForComponent(Release release, AresComponent component)
+  private static ReleaseAsset? SelectAssetForAresRelease(Release release)
   {
     if(release.Assets is null || release.Assets.Count == 0)
       return null;
 
     var os = OsBundleNameGetter.GetName();
+    var candidateAssets = release.Assets
+      .Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true)
+      .ToArray();
 
-    var keywords = component switch
-    {
-      AresComponent.Ui => ["ui", os],
-      AresComponent.Service => ["service", os],
-      AresComponent.Both => [os],
-      _ => Array.Empty<string>()
-    };
+    if(candidateAssets.Length == 0)
+      candidateAssets = release.Assets.ToArray();
 
-    var asset = release.Assets.FirstOrDefault(a =>
-      keywords.All(keyword => a.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true));
+    var preferred = candidateAssets.FirstOrDefault(a =>
+      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true &&
+      !a.Name!.Contains("offline", StringComparison.OrdinalIgnoreCase));
 
-    if(asset is not null)
-      return asset;
+    if(preferred is not null)
+      return preferred;
 
-    return release.Assets.Count == 1 ? release.Assets[0] : null;
+    preferred = candidateAssets.FirstOrDefault(a =>
+      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true);
+
+    if(preferred is not null)
+      return preferred;
+
+    return candidateAssets.Length == 1 ? candidateAssets[0] : null;
   }
 
   private static ReleaseAsset? SelectAssetForLauncher(Release release)
@@ -174,21 +179,21 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
 
     var os = OsBundleNameGetter.GetName();
     var candidateAssets = release.Assets
-      .Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) == true)
+      .Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true)
       .ToArray();
 
     if(candidateAssets.Length == 0)
       candidateAssets = release.Assets.ToArray();
 
     var preferred = candidateAssets.FirstOrDefault(a =>
-      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true &&
+      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true &&
       !a.Name!.Contains("offline", StringComparison.OrdinalIgnoreCase));
 
     if(preferred is not null)
       return preferred;
 
     preferred = candidateAssets.FirstOrDefault(a =>
-      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) == true);
+      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true);
 
     if(preferred is not null)
       return preferred;

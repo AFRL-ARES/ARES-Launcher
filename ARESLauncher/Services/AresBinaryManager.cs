@@ -34,28 +34,31 @@ public class AresBinaryManager : IAresBinaryManager
   public AppSettingsService? ServiceSettings { get; private set; }
   public AppSettingsUi? UiSettings { get; private set; }
   public AresSource? CurrentSource { get; private set; }
+  public AresReleaseLayout CurrentLayout { get; private set; } = AresReleaseLayout.SplitUiAndService;
 
   public Task Refresh()
   {
+    var uiMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.UiBinaryPath);
+    var serviceMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.ServiceBinaryPath);
+    var metadata = uiMetadata ?? serviceMetadata;
+    CurrentLayout = ResolveLayout(uiMetadata, serviceMetadata);
+
     // Load appsettings (if present)
     UiSettings =
       TryLoadAppSettings<AppSettingsUi>(Path.Combine(_configurationService.Current.UiBinaryPath,
         "appsettings.ui.json"));
-    ServiceSettings =
-      TryLoadAppSettings<AppSettingsService>(Path.Combine(_configurationService.Current.ServiceBinaryPath,
-        "appsettings.aresservice.json"));
+    ServiceSettings = CurrentLayout == AresReleaseLayout.SplitUiAndService
+      ? TryLoadAppSettings<AppSettingsService>(Path.Combine(_configurationService.Current.ServiceBinaryPath,
+        "appsettings.aresservice.json"))
+      : null;
 
     if(_logger.IsEnabled(LogLevel.Debug))
     {
       if(UiSettings is null)
         _logger.LogDebug("Ui settings not found in {}", _configurationService.Current.UiBinaryPath);
-      if(ServiceSettings is null)
+      if(CurrentLayout == AresReleaseLayout.SplitUiAndService && ServiceSettings is null)
         _logger.LogDebug("Service settings not found in {}", _configurationService.Current.ServiceBinaryPath);
     }
-
-    var uiMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.UiBinaryPath);
-    var serviceMetadata = BinaryMetadataHelper.ReadMetadata(_configurationService.Current.ServiceBinaryPath);
-    var metadata = uiMetadata ?? serviceMetadata;
 
     if(uiMetadata is not null && serviceMetadata is not null)
     {
@@ -93,6 +96,43 @@ public class AresBinaryManager : IAresBinaryManager
   {
     var newPath = ToLocalPath(uri);
     _configurationService.Update(cfg => cfg.ServiceBinaryPath = newPath);
+  }
+
+  private AresReleaseLayout ResolveLayout(AresBinaryMetadata? uiMetadata, AresBinaryMetadata? serviceMetadata)
+  {
+    var metadataLayout = uiMetadata?.Layout ?? serviceMetadata?.Layout;
+    if(metadataLayout is not null)
+    {
+      return metadataLayout.Value;
+    }
+
+    var uiExecutable = _executableGetter.GetUiExecutablePath();
+    var serviceExecutable = GetServiceExecutablePathIgnoringLayout();
+    var uiExists = !string.IsNullOrWhiteSpace(uiExecutable) && File.Exists(uiExecutable);
+    var serviceExists = !string.IsNullOrWhiteSpace(serviceExecutable) && File.Exists(serviceExecutable);
+    if(uiExists && !serviceExists)
+    {
+      return AresReleaseLayout.UnifiedUiOnly;
+    }
+
+    return _configurationService.Current.InstalledAresLayout;
+  }
+
+  private string? GetServiceExecutablePathIgnoringLayout()
+  {
+    var servicePath = _configurationService.Current.ServiceBinaryPath;
+    if(string.IsNullOrWhiteSpace(servicePath))
+    {
+      return null;
+    }
+
+    var executablePath = Path.Combine(servicePath, "AresService");
+    if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+    {
+      executablePath = Path.ChangeExtension(executablePath, "exe");
+    }
+
+    return executablePath;
   }
 
   private SemanticVersion? TryGetInstalledVersion()

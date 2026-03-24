@@ -53,13 +53,15 @@ public class AresUpdater : IAresUpdater
 
   public async Task InstallOffline(string path)
   {
-    _updateStepDescriptionSubject.OnNext("Unpacking the bundle");
+    _updateStepDescriptionSubject.OnNext("Unpacking the package");
     var dest = _configurationService.Current.UiBinaryPath;
     var source = _configurationService.Current.CurrentAresRepo;
     var version = Tools.VersionExtensions.GetVersionFromZipName(path);  
 
     await Unpacker.Unpack(path, dest);
-    BinaryMetadataHelper.WriteMetadata(dest, source, version);
+    var layout = DetectInstalledLayout(dest);
+    _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
+    BinaryMetadataHelper.WriteMetadata(dest, source, version, layout);
 
     await ApplyLocalSettings();
   }
@@ -81,10 +83,8 @@ public class AresUpdater : IAresUpdater
     _currentUpdateStepSubject.OnNext(UpdateStep.Downloading);
     try
     {
-      if(source.Bundle)
-        await DownloadBundle(source, version, uiDir);
-      else
-        await DownloadIndividualComponents(source, version, uiDir, serviceDir);
+      var layout = await DownloadPackage(source, version, uiDir);
+      _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
     }
     catch(Exception)
     {
@@ -118,7 +118,7 @@ public class AresUpdater : IAresUpdater
     //No ARES installed, check for offline package
     if(_binaryManager.CurrentVersion is null)
     {
-      _updateStepDescriptionSubject.OnNext("Checking for offline bundle.");
+      _updateStepDescriptionSubject.OnNext("Checking for offline package.");
       _currentUpdateStepSubject.OnNext(UpdateStep.Other);
       var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
       if(Directory.Exists(offlinePath))
@@ -162,58 +162,37 @@ public class AresUpdater : IAresUpdater
   public IObservable<double> UpdateProgress { get; }
   public IObservable<UpdateStep> CurrentUpdateStep { get; }
 
-  private async Task DownloadBundle(AresSource source, SemanticVersion version, string dest)
+  private async Task<AresReleaseLayout> DownloadPackage(AresSource source, SemanticVersion version, string dest)
   {
     var tempPath = Path.GetTempPath();
     try
     {
-      _updateStepDescriptionSubject.OnNext("Downloading the bundle.");
-      var bundleDest = await _downloader.Download(source, version, AresComponent.Both, tempPath, _configurationService.Current.GitToken,
+      _updateStepDescriptionSubject.OnNext("Downloading the package.");
+      var packageDest = await _downloader.Download(source, version, tempPath, _configurationService.Current.GitToken,
         new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
-      _updateStepDescriptionSubject.OnNext("Unpacking the bundle");
-      await Unpacker.Unpack(bundleDest, dest);
-      BinaryMetadataHelper.WriteMetadata(dest, source, version);
+      _updateStepDescriptionSubject.OnNext("Unpacking the package");
+      await Unpacker.Unpack(packageDest, dest);
+      var layout = DetectInstalledLayout(dest);
+      BinaryMetadataHelper.WriteMetadata(dest, source, version, layout);
+      return layout;
     }
     catch(Exception e)
     {
-      _logger.LogError("Failed to acquire the combined bundle. {}", e);
+      _logger.LogError("Failed to acquire the ARES package. {}", e);
       throw;
     }
   }
 
-  private async Task DownloadIndividualComponents(AresSource source, SemanticVersion version, string uiDir,
-    string serviceDir)
+  private static AresReleaseLayout DetectInstalledLayout(string installDirectory)
   {
-    var tempPath = Path.GetTempPath();
-    try
+    var serviceExecutable = Path.Combine(installDirectory, "AresService");
+    if(OperatingSystem.IsWindows())
     {
-      _updateStepDescriptionSubject.OnNext("Downloading the UI.");
-      var uiDest = await _downloader.Download(source, version, AresComponent.Ui, tempPath, _configurationService.Current.GitToken,
-        new Progress<double>(pg => _updateProgressSubject.OnNext(pg / 2)));
-      _updateStepDescriptionSubject.OnNext("Unpacking the UI");
-      await Unpacker.Unpack(uiDest, uiDir);
-      BinaryMetadataHelper.WriteMetadata(uiDir, source, version);
-    }
-    catch(Exception e)
-    {
-      _logger.LogError("Failed to acquire the UI. {}", e);
-      throw;
+      serviceExecutable = Path.ChangeExtension(serviceExecutable, "exe");
     }
 
-    try
-    {
-      _updateStepDescriptionSubject.OnNext("Acquiring the Service.");
-      var serviceDest = await _downloader.Download(source, version, AresComponent.Service, tempPath, _configurationService.Current.GitToken,
-        new Progress<double>(pg => _updateProgressSubject.OnNext(.5 + pg / 2)));
-
-      _updateStepDescriptionSubject.OnNext("Unpacking the Service.");
-      await Unpacker.Unpack(serviceDest, serviceDir);
-      BinaryMetadataHelper.WriteMetadata(serviceDir, source, version);
-    }
-    catch(Exception e)
-    {
-      _logger.LogError("Failed to acquire the Service. {}", e);
-      throw;
-    }
+    return File.Exists(serviceExecutable)
+      ? AresReleaseLayout.SplitUiAndService
+      : AresReleaseLayout.UnifiedUiOnly;
   }
 }

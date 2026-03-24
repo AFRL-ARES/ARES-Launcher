@@ -13,6 +13,12 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService, 
 {
   public void Update(AresComponent component)
   {
+    if(component == AresComponent.Service &&
+       _configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly)
+    {
+      return;
+    }
+
     switch(component)
     {
       case AresComponent.Ui:
@@ -28,7 +34,9 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService, 
 
   public void UpdateAll()
   {
-    AresComponent[] components = [AresComponent.Ui, AresComponent.Service];
+    AresComponent[] components = _configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly
+      ? [AresComponent.Ui]
+      : [AresComponent.Ui, AresComponent.Service];
     foreach(var aresComponent in components)
       Update(aresComponent);
   }

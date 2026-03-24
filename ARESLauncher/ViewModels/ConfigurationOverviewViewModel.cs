@@ -21,6 +21,7 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   public ConfigurationOverviewViewModel(IAppConfigurationService configurationService)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+    InstalledAresLayout = string.Empty;
     AresDataPath = "";
     Refresh();
   }
@@ -68,6 +69,9 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   }
 
   [Reactive]
+  public partial string InstalledAresLayout { get; private set; }
+
+  [Reactive]
   public partial string AresDataPath { get; private set; }
 
   public void Refresh()
@@ -82,5 +86,6 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
     AvailableRepositoriesDisplay = current.AvailableAresRepos.Select(repo => $"{repo.Owner}/{repo.Repo}").ToArray();
     GitToken = current.GitToken;
     AresDataPath = current.AresDataPath;
+    InstalledAresLayout = current.InstalledAresLayout.ToString();
   }
 }

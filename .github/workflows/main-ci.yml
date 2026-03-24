@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  SOLUTION_FILE: 'ARESLauncher.sln' 
+  SOLUTION_FILE: 'ARESLauncher.slnx' 
 
 jobs:
   build-and-test:
