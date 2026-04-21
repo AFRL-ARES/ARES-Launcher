@@ -92,6 +92,7 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService, 
     appSettings.CertificateSettings ??= new CertificateSettings();
     appSettings.CertificateSettings.Path = _configurationService.Current.CertificatePath;
     appSettings.CertificateSettings.Password = _configurationService.Current.CertificatePassword;
+    appSettings.AresDataPath = _configurationService.Current.AresDataPath;
   }
 
   private static void UpdateKestrel(AppSettingsBase settingsBase, AresComponent component,

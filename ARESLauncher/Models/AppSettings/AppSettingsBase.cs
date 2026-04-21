@@ -23,6 +23,8 @@ public abstract class AppSettingsBase
   public KestrelOptions? Kestrel { get; set; }
 
   public CertificateSettings? CertificateSettings { get; set; }
+
+  public string? AresDataPath { get; set; }
 }
 
 public class RemoteServiceSettings
