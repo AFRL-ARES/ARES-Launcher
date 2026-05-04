@@ -30,10 +30,18 @@ public static class Unpacker
 
   private static void ExtractArchive(string archivePath, string destinationPath)
   {
-    var extension = Path.GetExtension(archivePath);
-    if (!string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase))
-      throw new NotSupportedException($"Unsupported archive type \"{extension}\".");
+    try
+    {
+      var extension = Path.GetExtension(archivePath);
+      if(!string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase))
+        throw new NotSupportedException($"Unsupported archive type \"{extension}\".");
 
-    ZipFile.ExtractToDirectory(archivePath, destinationPath, true);
+      ZipFile.ExtractToDirectory(archivePath, destinationPath, true);
+    }
+
+    catch(Exception ex)
+    {
+      Console.WriteLine(ex.Message);
+    }
   }
 }

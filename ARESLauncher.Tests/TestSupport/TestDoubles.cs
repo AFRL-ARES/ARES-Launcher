@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using ARESLauncher.Configuration;
 using ARESLauncher.Models;
 using ARESLauncher.Models.AppSettings;
@@ -9,22 +7,29 @@ using NuGet.Versioning;
 
 namespace ARESLauncher.Tests;
 
-internal sealed class RecordingAresDownloader(string archivePath) : IAresDownloader
+internal sealed class RecordingAresDownloader(string? archivePath) : IAresDownloader
 {
   public int DownloadCallCount { get; private set; }
+  public bool InvalidateCacheCalled { get; private set; }
   public AresSource? LastSource { get; private set; }
   public SemanticVersion? LastVersion { get; private set; }
   public string? LastDestination { get; private set; }
   public string? LastAuthToken { get; private set; }
+  public AresRelease[] AvailableReleases { get; set; } = [];
 
-  public Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken)
+  public Task<AresRelease[]> GetAvailableVersions(AresSource source, string? authToken)
   {
-    throw new NotSupportedException();
+    return Task.FromResult(AvailableReleases);
   }
 
-  public Task<SemanticVersion[]> GetAvailableVersions(LauncherSource soruce)
+  public Task<AresRelease[]> GetAvailableVersions(LauncherSource source, string? authToken)
   {
-    throw new NotSupportedException();
+    return Task.FromResult(AvailableReleases);
+  }
+
+  public void InvalidateCache()
+  {
+    InvalidateCacheCalled = true;
   }
 
   public Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken,
@@ -42,7 +47,7 @@ internal sealed class RecordingAresDownloader(string archivePath) : IAresDownloa
     LastDestination = destination;
     LastAuthToken = authToken;
     progress?.Report(1);
-    return Task.FromResult(archivePath);
+    return Task.FromResult(archivePath ?? throw new InvalidOperationException("Archive path not set"));
   }
 }
 
@@ -86,13 +91,43 @@ internal sealed class FakeCertificateManager : ICertificateManager
 
 internal sealed class FakeDatabaseManager : IDatabaseManager
 {
-  public DatabaseStatus DatabaseStatus => DatabaseStatus.UpToDate;
+  public DatabaseStatus DatabaseStatus { get; set; } = DatabaseStatus.UpToDate;
   public int RefreshCallCount { get; private set; }
   public int RunMigrationsCallCount { get; private set; }
+  public int CreateSnapshotCallCount { get; private set; }
+  public int RestoreSnapshotCallCount { get; private set; }
+  public SemanticVersion? LastSnapshotVersion { get; private set; }
+  public SemanticVersion? LastRestoreVersion { get; private set; }
+  public bool SnapshotExistsResult { get; set; }
 
   public Task RunMigrations()
   {
     RunMigrationsCallCount++;
+    return Task.CompletedTask;
+  }
+
+  public Task CreateSnapshot(SemanticVersion version)
+  {
+    CreateSnapshotCallCount++;
+    LastSnapshotVersion = version;
+    return Task.CompletedTask;
+  }
+
+  public Task<bool> HasSnapshot(SemanticVersion version)
+  {
+    return Task.FromResult(SnapshotExistsResult);
+  }
+
+  public Task RestoreSnapshot(SemanticVersion version)
+  {
+    RestoreSnapshotCallCount++;
+    LastRestoreVersion = version;
+    return Task.CompletedTask;
+  }
+
+  public Task Reset()
+  {
+    DatabaseStatus = DatabaseStatus.NonExistent;
     return Task.CompletedTask;
   }
 

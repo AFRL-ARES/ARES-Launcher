@@ -6,6 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
+             xmlns:models="clr-namespace:ARESLauncher.Models"
              xmlns:views="clr-namespace:ARESLauncher.Views"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="ARESLauncher.Views.MainView"
@@ -36,17 +37,17 @@
     <Grid>
         <TabControl>
             <TabItem Header="Overview">
-                <Grid RowDefinitions="100,*,Auto">
+                <Grid RowDefinitions="50,*,Auto">
                     <!-- Top Logo -->
                     <areslauncher:AresLogo Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" Height="180"
                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,-75,5,5" />
 
                     <!-- Main Content -->
-                    <Grid Grid.Row="1" RowDefinitions="*,Auto,Auto,Auto,Auto" RowSpacing="5" VerticalAlignment="Top"
+                    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" VerticalAlignment="Top"
                           HorizontalAlignment="Center" MaxWidth="400">
 
                         <!-- Primary and auxiliary buttons -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,0,0,5">
                             <Button Classes="AresButton" x:Name="PrimaryButton"
                                     IsVisible="{Binding LauncherReady}"
                                     Width="180" Height="80"
@@ -75,8 +76,7 @@
                             Text="{Binding AresStateDescription}"
                             IsVisible="{Binding !UpdateInProgress}"
                             HorizontalAlignment="Center"
-                            FontSize="16"
-                            Margin="0,15,0,0" />
+                            FontSize="16" />
                             <TextBlock
                             Text="{Binding InstalledAresVersion, StringFormat='ARES version: {0}'}"
                             IsVisible="{Binding InstalledAresVersion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -95,7 +95,7 @@
                             <StackPanel Spacing="8">
                                 <Button Command="{Binding UpdateAresCommand}" HorizontalAlignment="Stretch" Classes="info">
                                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                                        <TextBlock Text="⇧" />
+                                        <ic:FluentIcon Icon="ArrowCircleUp" />
                                         <TextBlock Text="Update" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Button>

@@ -22,17 +22,37 @@
                        TextWrapping="Wrap"
                        TextAlignment="Center" />
             <TextBlock Text="Do you want to continue with this update?"
-                       TextAlignment="Center" />
+                       TextAlignment="Center"
+                       IsVisible="{Binding !IsDowngrade}"/>
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         Spacing="12"
-                        Margin="0,8,0,0">
+                        Margin="0,8,0,0"
+                        IsVisible="{Binding !IsDowngrade}">
                 <Button Content="Cancel"
                         MinWidth="120"
                         Command="{Binding CancelCommand}" />
                 <Button Content="Proceed"
                         MinWidth="120"
                         Command="{Binding ProceedCommand}" />
+            </StackPanel>
+            <StackPanel Orientation="Vertical"
+                        HorizontalAlignment="Center"
+                        Spacing="12"
+                        Margin="0,8,0,0"
+                        IsVisible="{Binding IsDowngrade}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button Content="Restore Snapshot"
+                            MinWidth="120"
+                            Command="{Binding RestoreSnapshotCommand}"
+                            IsVisible="{Binding HasSnapshot}" />
+                    <Button Content="Reset Database"
+                            MinWidth="120"
+                            Command="{Binding ResetCommand}" />
+                </StackPanel>
+                <Button Content="Cancel"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding CancelCommand}" />
             </StackPanel>
         </StackPanel>
     </Border>

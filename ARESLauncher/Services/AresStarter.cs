@@ -16,6 +16,7 @@ public class AresStarter : IAresStarter
 {
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IExecutableGetter _executableGetter;
+  private readonly IDatabaseManager _databaseManager;
   private readonly ILogger<AresStarter> _logger;
   private readonly BehaviorSubject<bool> _aresUiRunningSubject = new(false);
   private readonly BehaviorSubject<bool> _aresServiceRunningSubject = new(false);
@@ -26,10 +27,11 @@ public class AresStarter : IAresStarter
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
 
-  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, ILogger<AresStarter> logger)
+  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, IDatabaseManager databaseManager, ILogger<AresStarter> logger)
   {
     _aresBinaryManager = aresBinaryManager;
     _executableGetter = executableGetter;
+    _databaseManager = databaseManager;
     _logger = logger;
     AresUiRunning = _aresUiRunningSubject.AsObservable();
     AresServiceRunning = _aresServiceRunningSubject.AsObservable();
@@ -38,12 +40,25 @@ public class AresStarter : IAresStarter
   public IObservable<bool> AresUiRunning { get; }
   public IObservable<bool> AresServiceRunning { get; }
 
-  public void Start()
+  public async void Start()
   {
     if(IsHealthyRunning())
     {
       _logger.LogDebug("Start requested while ARES is already running. Skipping.");
       return;
+    }
+
+    var currentVersion = _aresBinaryManager.CurrentVersion;
+    if(currentVersion is not null)
+    {
+      try
+      {
+        await _databaseManager.CreateSnapshot(currentVersion);
+      }
+      catch(Exception e)
+      {
+        _logger.LogWarning("Failed to create database snapshot before start: {Exception}", e);
+      }
     }
 
     _cancellationTokenSource = new CancellationTokenSource();

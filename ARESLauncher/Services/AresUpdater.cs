@@ -45,10 +45,44 @@ public class AresUpdater : IAresUpdater
     CurrentUpdateStep = _currentUpdateStepSubject.AsObservable();
   }
 
-  public Task<SemanticVersion[]> GetAvailableVersions()
+  public async Task<AresRelease[]> GetAvailableVersions()
   {
     var source = _configurationService.Current.CurrentAresRepo;
-    return _downloader.GetAvailableVersions(source, _configurationService.Current.GitToken);
+    var remoteReleases = await _downloader.GetAvailableVersions(source, _configurationService.Current.GitToken);
+    var localDebugVersions = GetLocalDebugVersions();
+
+    var allReleases = remoteReleases.Union(localDebugVersions.Select(v => new AresRelease { Version = v, IsBeta = false }))
+      .OrderByDescending(r => r.Version);
+
+    if(!_configurationService.Current.IncludeBeta)
+    {
+      return allReleases.Where(r => !r.IsBeta).ToArray();
+    }
+
+    return allReleases.ToArray();
+  }
+
+  private SemanticVersion[] GetLocalDebugVersions()
+  {
+    var debugPath = Path.Combine(AppContext.BaseDirectory, "Debug");
+    if(!Directory.Exists(debugPath))
+      return Array.Empty<SemanticVersion>();
+
+    return Directory.EnumerateFiles(debugPath, "*.zip")
+      .Select(f =>
+      {
+        try
+        {
+          return Tools.VersionExtensions.GetVersionFromZipName(Path.GetFileName(f));
+        }
+        catch(Exception)
+        {
+          return null;
+        }
+      })
+      .Where(v => v is not null)
+      .Cast<SemanticVersion>()
+      .ToArray();
   }
 
   public async Task InstallOffline(string path)
@@ -147,7 +181,7 @@ public class AresUpdater : IAresUpdater
       return;
     }
 
-    var latest = versions.OrderDescending().FirstOrDefault();
+    var latest = versions.FirstOrDefault();
     if(latest is null)
     {
       _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
@@ -155,7 +189,62 @@ public class AresUpdater : IAresUpdater
       throw new InvalidOperationException("No ARES versions found. Ensure the right repository is selected and/or your Git token is correct.");
     }
 
-    await Update(latest);
+    await Update(latest.Version);
+  }
+
+  public async Task CreateSnapshot(SemanticVersion version)
+  {
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Creating database snapshot");
+    try
+    {
+      await _databaseManager.CreateSnapshot(version);
+    }
+    finally
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("");
+    }
+  }
+
+  public Task<bool> HasSnapshot(SemanticVersion version)
+  {
+    return _databaseManager.HasSnapshot(version);
+  }
+
+  public async Task RestoreSnapshot(SemanticVersion version)
+  {
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Restoring database snapshot");
+    try
+    {
+      await _databaseManager.RestoreSnapshot(version);
+    }
+    finally
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("");
+    }
+  }
+
+  public async Task ResetDatabase()
+  {
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Resetting database");
+    try
+    {
+      await _databaseManager.Reset();
+    }
+    finally
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("");
+    }
+  }
+
+  public void InvalidateCache()
+  {
+    _downloader.InvalidateCache();
   }
 
   public IObservable<string> UpdateStepDescription { get; }
@@ -167,9 +256,37 @@ public class AresUpdater : IAresUpdater
     var tempPath = Path.GetTempPath();
     try
     {
-      _updateStepDescriptionSubject.OnNext("Downloading the package.");
-      var packageDest = await _downloader.Download(source, version, tempPath, _configurationService.Current.GitToken,
-        new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
+      string packageDest;
+      var debugPath = Path.Combine(AppContext.BaseDirectory, "Debug");
+      var localPackage = Directory.Exists(debugPath)
+        ? Directory.EnumerateFiles(debugPath, "*.zip")
+          .FirstOrDefault(f =>
+          {
+            try
+            {
+              return version.Equals(Tools.VersionExtensions.GetVersionFromZipName(Path.GetFileName(f)));
+            }
+            catch(Exception)
+            {
+              return false;
+            }
+          })
+        : null;
+
+      if(localPackage != null)
+      {
+        _logger.LogInformation("Using local debug package for version {Version}: {Path}", version, localPackage);
+        _updateStepDescriptionSubject.OnNext("Using local debug package.");
+        _updateProgressSubject.OnNext(1.0);
+        packageDest = localPackage;
+      }
+      else
+      {
+        _updateStepDescriptionSubject.OnNext("Downloading the package.");
+        packageDest = await _downloader.Download(source, version, tempPath, _configurationService.Current.GitToken,
+          new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
+      }
+
       _updateStepDescriptionSubject.OnNext("Unpacking the package");
       await Unpacker.Unpack(packageDest, dest);
       var layout = DetectInstalledLayout(dest);

@@ -17,7 +17,6 @@ namespace ARESLauncher.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
-  private readonly IAppSettingsUpdater _appSettingsUpdater;
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly ObservableAsPropertyHelper<int> _aresComponentsRunning;
   private readonly IAresStarter _aresStarter;
@@ -29,7 +28,6 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<object?> _auxButtonContent;
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _buttonCommand;
   private readonly ObservableAsPropertyHelper<string> _buttonText;
-  private readonly ICertificateManager _certificateManager;
   private readonly IConflictManager _conflictManager;
   private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
   private readonly IDatabaseManager _databaseManager;
@@ -48,19 +46,17 @@ public partial class MainViewModel : ViewModelBase
     IAresBinaryManager aresBinaryManager,
     IAresStarter aresStarter,
     IAppSettingsUpdater appSettingsUpdater,
-    ICertificateManager certificateManager,
     IAresUpdater aresUpdater,
     ILauncherUpdater launcherUpdater,
     IDatabaseManager databaseManager,
     IBrowserOpener browserOpener,
     IConflictManager conflictManager)
   {
+    AvailableAresVersions = [];
     Overview = overview ?? throw new ArgumentNullException(nameof(overview));
     Editor = editor ?? throw new ArgumentNullException(nameof(editor));
     _aresBinaryManager = aresBinaryManager;
     _aresStarter = aresStarter;
-    _appSettingsUpdater = appSettingsUpdater;
-    _certificateManager = certificateManager;
     _aresUpdater = aresUpdater;
     _launcherUpdater = launcherUpdater;
     _databaseManager = databaseManager;
@@ -81,7 +77,7 @@ public partial class MainViewModel : ViewModelBase
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
     OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
-    UpdateConfirmationDialog = new Interaction<UpdateConfirmationRequest, bool>();
+    UpdateConfirmationDialog = new Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse>();
     ConflictDialog = new Interaction<Unit, Unit>();
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
@@ -103,15 +99,29 @@ public partial class MainViewModel : ViewModelBase
     _currentUpdateStep = _aresUpdater.CurrentUpdateStep.ToProperty(this, vm => vm.CurrentUpdateStep);
     _progress = _aresUpdater.UpdateProgress.ToProperty(this, vm => vm.Progress);
 
+    this.WhenAnyValue(x => x.Editor.UpdateInProgress)
+      .Skip(1)
+      .Subscribe((bool inProgress) => 
+      {
+        if(inProgress == false)
+          _ = this.CheckAresCondition();
+      });
+
     _aresComponentsRunning = _aresStarter
       .AresUiRunning
       .CombineLatest(_aresStarter.AresServiceRunning, (ui, service) => (ui ? 1 : 0) + (service ? 1 : 0))
       .ToProperty(this, vm => vm.AresComponentsRunning);
 
     _updateAvailable = this
-      .WhenAnyValue(x => x.AvailableVersions, x => x.AresComponentsRunning, x => x.CurrentUpdateStep, (av, runnin, updateStep) =>
+      .WhenAnyValue(x => x.AvailableAresUpdateVersion, x => x.AresComponentsRunning, x => x.CurrentUpdateStep, x => x.InstalledAresVersion, (av, runnin, updateStep, installedAresVersion) =>
       {
-        bool updateAvailable = av is not null && _aresBinaryManager.CurrentVersion is not null && !_aresBinaryManager.CurrentVersion.IsGreatest(av);
+        if(string.IsNullOrEmpty(av) || _aresBinaryManager.CurrentVersion is null)
+          return false;
+
+        if(!SemanticVersion.TryParse(av, out var latest))
+          return false;
+
+        bool updateAvailable = latest > _aresBinaryManager.CurrentVersion;
         return updateAvailable && runnin == 0 && updateStep == UpdateStep.Idle;
       })
       .ToProperty(this, vm => vm.UpdateAvailable);
@@ -132,9 +142,9 @@ public partial class MainViewModel : ViewModelBase
       vm => vm.AresPresent,
       vm => vm.DatabaseStatus,
       vm => vm.CurrentUpdateStep,
-      (isRunning, isPresent, dbStatus, updootStep) =>
+      (isRunning, isPresent, dbStatus, updateStep) =>
       {
-        if(updootStep != UpdateStep.Idle)
+        if(updateStep != UpdateStep.Idle)
         {
           return AresState.Updating;
         }
@@ -144,54 +154,51 @@ public partial class MainViewModel : ViewModelBase
         var partiallyRunning = layout == AresReleaseLayout.SplitUiAndService && isRunning == 1;
 
         if(partiallyRunning)
-        {
           return AresState.OneRunning;
-        }
+        
         if(fullyRunning)
-        {
           return AresState.BothRunning;
-        }
 
         if(!isPresent)
-        {
           return AresState.NeedsInstall;
-        }
 
         if(dbStatus != DatabaseStatus.UpToDate)
-        {
           return AresState.NeedsDbUpdate;
-        }
 
         return AresState.Ready;
       }).ToProperty(this, vm => vm.AresState);
 
 
     _buttonText = this
-      .WhenAnyValue(vm => vm.AresState)
-      .Select(s => s switch
+      .WhenAnyValue(vm => vm.AresState, (s) => 
       {
-        AresState.Unknown => ":)",
-        AresState.OneRunning => "Start",
-        AresState.BothRunning => "Stop",
-        AresState.Ready => "Start",
-        AresState.NeedsDbUpdate => "Update DB",
-        AresState.NeedsInstall => "Install",
-        AresState.Updating => "Updating...",
-        _ => throw new NotImplementedException()
+          return s switch
+          {
+            AresState.Unknown => ":)",
+            AresState.OneRunning => "Start",
+            AresState.BothRunning => "Stop",
+            AresState.Ready => "Start",
+            AresState.NeedsDbUpdate => "Update DB",
+            AresState.NeedsInstall => "Install",
+            AresState.Updating => "Updating...",
+            _ => throw new NotImplementedException()
+          };
       }).ToProperty(this, vm => vm.ButtonText);
 
     _buttonCommand = this
-      .WhenAnyValue(vm => vm.AresState)
-      .Select(s => s switch
+      .WhenAnyValue(vm => vm.AresState, (s) => 
       {
-        AresState.Unknown => null,
-        AresState.OneRunning => StartAresCommand,
-        AresState.BothRunning => StopAresCommand,
-        AresState.Ready => StartAresCommand,
-        AresState.NeedsDbUpdate => UpdateDatabaseCommand,
-        AresState.NeedsInstall => UpdateAresCommand,
-        AresState.Updating => null,
-        _ => throw new NotImplementedException()
+          return s switch
+          {
+            AresState.Unknown => null,
+            AresState.OneRunning => StartAresCommand,
+            AresState.BothRunning => StopAresCommand,
+            AresState.Ready => StartAresCommand,
+            AresState.NeedsDbUpdate => UpdateDatabaseCommand,
+            AresState.NeedsInstall => UpdateAresCommand,
+            AresState.Updating => null,
+            _ => throw new NotImplementedException()
+          };
       }).ToProperty(this, vm => vm.ButtonCommand);
 
     _auxButtonContent = this
@@ -237,14 +244,8 @@ public partial class MainViewModel : ViewModelBase
       }).ToProperty(this, vm => vm.AresStateDescription);
 
     _updateInProgress = this
-      .WhenAnyValue(vm => vm.CurrentUpdateStep)
-      .Select(s => s switch
-      {
-        UpdateStep.Idle => false,
-        UpdateStep.Downloading => true,
-        UpdateStep.Other => true,
-        _ => throw new NotImplementedException()
-      }).ToProperty(this, vm => vm.UpdateInProgress);
+      .WhenAnyValue(vm => vm.InstalledAresVersion)
+      .Select(IsLatestAresVersion).ToProperty(this, vm => vm.UpdateInProgress);
 
     _showProgressBar = this
       .WhenAnyValue(vm => vm.CurrentUpdateStep)
@@ -264,6 +265,9 @@ public partial class MainViewModel : ViewModelBase
     RefreshCommand.Execute();
   }
 
+  private bool IsLatestAresVersion(string version)
+    => AvailableAresVersions.FirstOrDefault()?.Version.ToNormalizedString() == InstalledAresVersion;
+  
   [Reactive]
   public partial bool AresConditionChecked { get; private set; }
 
@@ -320,21 +324,20 @@ public partial class MainViewModel : ViewModelBase
 
   public bool UpdateInProgress => _updateInProgress.Value;
 
-  public bool UpdateAvailable => _updateAvailable.Value;
+  public bool UpdateAvailable => _updateAvailable.Value; 
 
   public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
+
+  public AresRelease[] AvailableAresVersions { get; set; }
 
   private async Task UpdateAvailableVersions()
   {
     await _aresBinaryManager.Refresh();
     InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
-    AvailableVersions = await _aresUpdater.GetAvailableVersions();
-    AvailableAresUpdateVersion = AvailableVersions?.OrderDescending().FirstOrDefault()?.ToNormalizedString() ?? string.Empty;
+    AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
+    AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
     AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
   }
-
-  [Reactive]
-  public partial SemanticVersion[]? AvailableVersions { get; private set; }
 
   [Reactive]
   public partial SemanticVersion[]? AvailableLauncherVersions { get; private set; }
@@ -358,7 +361,7 @@ public partial class MainViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
 
   public Interaction<Unit, Unit> ConflictDialog { get; }
-  public Interaction<UpdateConfirmationRequest, bool> UpdateConfirmationDialog { get; }
+  public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; }
   public bool ShowProgressBar => _showProgressBar.Value;
 
   public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
@@ -373,49 +376,73 @@ public partial class MainViewModel : ViewModelBase
     await _aresBinaryManager.Refresh();
     InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
     AresPresent = _aresBinaryManager.CurrentVersion is not null;
+
+    AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
+    AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
+    AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
+
     if(!AresPresent)
     {
       AresConditionChecked = true;
       return;
     }
 
-    AvailableVersions = await _aresUpdater.GetAvailableVersions();
-    AvailableAresUpdateVersion = AvailableVersions?.OrderDescending().FirstOrDefault()?.ToNormalizedString() ?? string.Empty;
-    AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
-
     await _databaseManager.Refresh();
     DatabaseStatus = _databaseManager.DatabaseStatus;
     if(DatabaseStatus != DatabaseStatus.UpToDate)
     {
       AresConditionChecked = true;
+      this.RaisePropertyChanged(nameof(UpdateAvailable));
       return;
     }
 
     AresConditionChecked = true;
+    this.RaisePropertyChanged(nameof(UpdateAvailable));
   }
 
   private async Task UpdateAres()
   {
     var currentVersion = _aresBinaryManager.CurrentVersion;
-    var targetVersion = AvailableVersions?.OrderDescending().FirstOrDefault();
+    AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
+    var latest = AvailableAresVersions.FirstOrDefault();
+    
+    if(latest is null) 
+      return;
+    
+    var targetVersion = latest.Version;
+
     if(RequiresUpdateConfirmation(currentVersion, targetVersion))
     {
-      var shouldProceed = await UpdateConfirmationDialog.Handle(new UpdateConfirmationRequest
+      var isDowngrade = currentVersion is not null && targetVersion < currentVersion;
+      var hasSnapshot = isDowngrade && await _aresUpdater.HasSnapshot(targetVersion);
+
+      var response = await UpdateConfirmationDialog.Handle(new UpdateConfirmationRequest
       {
-        CurrentVersion = currentVersion!,
-        TargetVersion = targetVersion!
+        CurrentVersion = currentVersion ?? targetVersion,
+        TargetVersion = targetVersion,
+        HasSnapshot = hasSnapshot
       });
 
-      if(!shouldProceed)
-      {
+      if(!response.ShouldProceed)
         return;
-      }
+
+      // Take snapshot of current version before doing anything
+      if(currentVersion is not null)
+        await _aresUpdater.CreateSnapshot(currentVersion);
+
+      if(response.DowngradeOption == DowngradeOption.RestoreSnapshot)
+        await _aresUpdater.RestoreSnapshot(targetVersion);
+
+      else if(response.DowngradeOption == DowngradeOption.Reset)
+        await _aresUpdater.ResetDatabase();
+
+      await _aresBinaryManager.Refresh();
     }
 
     try
     {
       Error = "";
-      await _aresUpdater.UpdateLatest();
+      await _aresUpdater.Update(targetVersion);
     }
     catch(Exception e)
     {
@@ -441,14 +468,10 @@ public partial class MainViewModel : ViewModelBase
       }
 
       if(Application.Current is App app)
-      {
         app.BeginShutdown();
-      }
 
       if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
-      {
         desktopLifetime.Shutdown();
-      }
     }
 
     catch(Exception e)
@@ -482,12 +505,17 @@ public partial class MainViewModel : ViewModelBase
   }
   
   // Check if we should ask for confirmation. We should ask if there's a major/minor update
-  // Let's ignore patches as those should not break things... should
+  // Or if it's a downgrade
   private static bool RequiresUpdateConfirmation(SemanticVersion? currentVersion, SemanticVersion? targetVersion)
   {
     if(currentVersion is null || targetVersion is null)
     {
       return false;
+    }
+
+    if(targetVersion < currentVersion)
+    {
+      return true;
     }
 
     if(targetVersion.Major > currentVersion.Major)

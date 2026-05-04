@@ -24,10 +24,11 @@ public class LauncherUpdater : ILauncherUpdater
     _configurationService = configurationService;
   }
 
-  public Task<SemanticVersion[]> GetAvailableVersions()
+  public async Task<SemanticVersion[]> GetAvailableVersions()
   {
     var source = _configurationService.Current.LauncherSource;
-    return _downloader.GetAvailableVersions(source);
+    var releases = await _downloader.GetAvailableVersions(source, _configurationService.Current.GitToken);
+    return releases.Select(r => r.Version).ToArray();
   }
 
   public async Task<bool> UpdateLatest()

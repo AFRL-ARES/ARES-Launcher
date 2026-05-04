@@ -1,6 +1,7 @@
 using ARESLauncher.Models;
 using ARESLauncher.Services;
 using ARESLauncher.Services.Configuration;
+using NuGet.Versioning;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System;
@@ -9,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 
 namespace ARESLauncher.ViewModels;
 
@@ -16,13 +18,20 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
 {
   private readonly IAppConfigurationService _configurationService;
   private readonly IAppSettingsUpdater _appSettingsUpdater;
+  private readonly IAresUpdater _aresUpdater;
+  private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IReadOnlyList<DatabaseProvider> _databaseProviders;
   private readonly IReadOnlyList<AresReleaseLayout> _releaseLayouts;
 
-  public ConfigurationEditorViewModel(IAppConfigurationService configurationService, IAppSettingsUpdater appSettingsUpdater)
+  public ConfigurationEditorViewModel(IAppConfigurationService configurationService, 
+    IAppSettingsUpdater appSettingsUpdater,
+    IAresUpdater aresUpdater,
+    IAresBinaryManager aresBinaryManager)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
     _appSettingsUpdater = appSettingsUpdater;
+    _aresUpdater = aresUpdater;
+    _aresBinaryManager = aresBinaryManager;
     _databaseProviders = Enum.GetValues<DatabaseProvider>();
     _releaseLayouts = Enum.GetValues<AresReleaseLayout>();
 
@@ -39,6 +48,13 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresServiceProcessName = string.Empty;
     EditableAresUiProcessName = string.Empty;
     EditableInstalledAresLayout = AresReleaseLayout.SplitUiAndService;
+    
+    var canInstall = this.WhenAnyValue(
+      x => x.SelectedRelease,
+      x => x.UpdateInProgress,
+      (selected, inProgress) => selected != null && !selected.IsInstalled && !inProgress);
+    UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres, canInstall);
+    
     LoadEditableConfiguration();
 
     AddRepositoryCommand = ReactiveCommand.Create(AddRepository);
@@ -49,11 +65,29 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   }
 
   public event EventHandler? ConfigurationSaved;
+  public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; } = new();
 
   public IReadOnlyList<DatabaseProvider> DatabaseProviders => _databaseProviders;
   public IReadOnlyList<AresReleaseLayout> ReleaseLayouts => _releaseLayouts;
 
   public ObservableCollection<AresSourceEditorViewModel> AvailableRepositories { get; }
+
+  [Reactive]
+  public partial AresRelease[]? AvailableReleases { get; private set; }
+
+  [Reactive]
+  public partial AresRelease? SelectedRelease { get; set; }
+
+  [Reactive]
+  public partial string? InstalledAresVersion { get; private set; }
+
+  public ReactiveCommand<Unit, Unit> UpdateAresCommand { get; }
+
+  [Reactive]
+  public partial bool UpdateInProgress { get; private set; }
+
+  [Reactive]
+  public partial string? UpdateError { get; private set; }
 
   [Reactive]
   public partial AresSourceEditorViewModel? SelectedAvailableRepository { get; set; }
@@ -99,6 +133,9 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
 
   [Reactive]
   public partial AresReleaseLayout EditableInstalledAresLayout { get; set; }
+
+  [Reactive]
+  public partial bool EditableIncludeBeta { get; set; }
 
   [Reactive]
   public partial bool ShowAdvancedOptions { get; set; }
@@ -165,6 +202,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
       configuration.AresServiceProcessName = EditableAresServiceProcessName;
       configuration.AresUiProcessName = EditableAresUiProcessName;
       configuration.InstalledAresLayout = EditableInstalledAresLayout;
+      configuration.IncludeBeta = EditableIncludeBeta;
 
       var validRepositories = AvailableRepositories
         .Where(IsValidRepository)
@@ -213,6 +251,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresServiceProcessName = current.AresServiceProcessName;
     EditableAresUiProcessName = current.AresUiProcessName;
     EditableInstalledAresLayout = current.InstalledAresLayout;
+    EditableIncludeBeta = current.IncludeBeta;
 
     AvailableRepositories.Clear();
     foreach(var repo in current.AvailableAresRepos)
@@ -225,6 +264,86 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
       string.Equals(repo.Owner, current.CurrentAresRepo.Owner, StringComparison.OrdinalIgnoreCase) &&
       string.Equals(repo.Repo, current.CurrentAresRepo.Repo, StringComparison.OrdinalIgnoreCase))
       ?? AvailableRepositories.FirstOrDefault();
+
+    _ = RefreshReleases();
+  }
+
+  private async Task RefreshReleases()
+  {
+    await _aresBinaryManager.Refresh();
+    var currentVersion = _aresBinaryManager.CurrentVersion;
+    InstalledAresVersion = currentVersion?.ToNormalizedString();
+
+    var releases = await _aresUpdater.GetAvailableVersions();
+    foreach(var release in releases)
+    {
+      release.IsInstalled = release.Version.Equals(currentVersion);
+    }
+
+    AvailableReleases = releases;
+    SelectedRelease = AvailableReleases.FirstOrDefault(r => r.IsInstalled) ?? AvailableReleases.FirstOrDefault();
+  }
+
+  private async Task UpdateAres()
+  {
+    if(SelectedRelease is null) return;
+
+    var currentVersion = _aresBinaryManager.CurrentVersion;
+    var targetVersion = SelectedRelease.Version;
+
+    if(RequiresUpdateConfirmation(currentVersion, targetVersion))
+    {
+      var isDowngrade = currentVersion is not null && targetVersion < currentVersion;
+      var hasSnapshot = isDowngrade && await _aresUpdater.HasSnapshot(targetVersion);
+
+      var response = await UpdateConfirmationDialog.Handle(new UpdateConfirmationRequest
+      {
+        CurrentVersion = currentVersion ?? targetVersion,
+        TargetVersion = targetVersion,
+        HasSnapshot = hasSnapshot
+      });
+
+      if(!response.ShouldProceed) return;
+
+      // Take snapshot of current version before doing anything
+      if(currentVersion is not null)
+      {
+        await _aresUpdater.CreateSnapshot(currentVersion);
+      }
+
+      if(response.DowngradeOption == DowngradeOption.RestoreSnapshot)
+      {
+        await _aresUpdater.RestoreSnapshot(targetVersion);
+      }
+      else if(response.DowngradeOption == DowngradeOption.Reset)
+      {
+        await _aresUpdater.ResetDatabase();
+      }
+    }
+
+    try
+    {
+      UpdateInProgress = true;
+      UpdateError = null;
+      await _aresUpdater.Update(targetVersion);
+    }
+    catch(Exception e)
+    {
+      UpdateError = e.Message;
+    }
+    finally
+    {
+      UpdateInProgress = false;
+      await RefreshReleases();
+    }
+  }
+
+  private static bool RequiresUpdateConfirmation(SemanticVersion? currentVersion, SemanticVersion? targetVersion)
+  {
+    if(currentVersion is null || targetVersion is null) return false;
+    if(targetVersion < currentVersion) return true;
+    if(targetVersion.Major > currentVersion.Major) return true;
+    return targetVersion.Major == currentVersion.Major && targetVersion.Minor > currentVersion.Minor;
   }
 
   private static bool IsValidRepository(AresSourceEditorViewModel repo)

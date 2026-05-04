@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reactive;
 using System.Reactive.Linq;
+using ARESLauncher.Models;
 using ARESLauncher.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
@@ -47,11 +48,15 @@ public partial class MainWindow : Window
         DataContext = dialogVm
       };
 
-      dialogVm.ProceedCommand.Subscribe(_ => dialog.Close(true));
-      dialogVm.CancelCommand.Subscribe(_ => dialog.Close(false));
+      var closeAndSet = new Action<UpdateConfirmationResponse>(res => dialog.Close(res));
 
-      var result = await dialog.ShowDialog<bool>(this);
-      interaction.SetOutput(result);
+      dialogVm.ProceedCommand.Subscribe(closeAndSet);
+      dialogVm.CancelCommand.Subscribe(closeAndSet);
+      dialogVm.RestoreSnapshotCommand.Subscribe(closeAndSet);
+      dialogVm.ResetCommand.Subscribe(closeAndSet);
+
+      var result = await dialog.ShowDialog<UpdateConfirmationResponse>(this);
+      interaction.SetOutput(result ?? UpdateConfirmationResponse.Cancel);
     });
   }
 

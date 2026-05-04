@@ -14,19 +14,38 @@ namespace ARESLauncher.Services;
 public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger) : IAresDownloader
 {
   private static readonly ApiOptions _fetchOptions = new() { PageCount = 2, PageSize = 10 };
+  private static readonly Dictionary<string, (AresRelease[] releases, DateTime timestamp)> _cache = new();
+  private static readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(30);
 
-  public async Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken)
+  public async Task<AresRelease[]> GetAvailableVersions(AresSource source, string? authToken)
   {
-    var client = CreateClient(authToken);
-    var versions = await FetchAndNormalizeVersions(client, source.Owner, source.Repo);
-    return versions.ToArray();
+    return await GetCachedVersions(authToken, source.Owner, source.Repo);
   }
 
-  public async Task<SemanticVersion[]> GetAvailableVersions(LauncherSource source)
+  public async Task<AresRelease[]> GetAvailableVersions(LauncherSource source, string? authToken)
   {
-    var client = CreateClient("");
-    var versions = await FetchAndNormalizeVersions(client, source.Owner, source.Repo);
-    return versions.ToArray();
+    return await GetCachedVersions(authToken, source.Owner, source.Repo);
+  }
+
+  private async Task<AresRelease[]> GetCachedVersions(string? authToken, string owner, string repo)
+  {
+    var cacheKey = $"{owner}/{repo}/{authToken ?? ""}";
+    if(_cache.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow - cached.timestamp < _cacheDuration)
+    {
+      return cached.releases;
+    }
+
+    var client = CreateClient(authToken);
+    var versions = await FetchAndNormalizeVersions(client, owner, repo);
+    var result = versions.ToArray();
+    
+    _cache[cacheKey] = (result, DateTime.UtcNow);
+    return result;
+  }
+
+  public void InvalidateCache()
+  {
+    _cache.Clear();
   }
 
   public async Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken,
@@ -46,9 +65,9 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       : downloadResult.ResultingFilePath!;
   }
 
-  private async Task<List<SemanticVersion>> FetchAndNormalizeVersions(GitHubClient client, string owner, string repo)
+  private async Task<List<AresRelease>> FetchAndNormalizeVersions(GitHubClient client, string owner, string repo)
   {
-    var versions = new List<SemanticVersion>();
+    var versions = new List<AresRelease>();
 
     try
     {
@@ -61,7 +80,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
           continue;
 
         if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion))
-          versions.Add(semanticVersion);
+          versions.Add(new AresRelease { Version = semanticVersion, IsBeta = release.Prerelease });
       }
     }
 
