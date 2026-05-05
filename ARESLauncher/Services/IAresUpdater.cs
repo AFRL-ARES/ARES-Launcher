@@ -13,9 +13,19 @@ public interface IAresUpdater
 
   IObservable<double> UpdateProgress { get; }
 
-  Task<SemanticVersion[]> GetAvailableVersions();
+  Task<AresRelease[]> GetAvailableVersions();
 
   Task Update(SemanticVersion version);
 
   Task UpdateLatest();
+
+  Task CreateSnapshot(SemanticVersion version);
+
+  Task<bool> HasSnapshot(SemanticVersion version);
+
+  Task RestoreSnapshot(SemanticVersion version);
+
+  Task ResetDatabase();
+
+  void InvalidateCache();
 }

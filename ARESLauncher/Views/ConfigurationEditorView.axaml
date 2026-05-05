@@ -3,12 +3,62 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
+             xmlns:models="clr-namespace:ARESLauncher.Models"
+             xmlns:ic="using:FluentIcons.Avalonia"
              mc:Ignorable="d"
              x:Class="ARESLauncher.Views.ConfigurationEditorView"
              x:DataType="vm:ConfigurationEditorViewModel">
     <ScrollViewer>
         <StackPanel Margin="16"
                     Spacing="12">
+
+            <!-- ARES Version Selection -->
+            <Border Padding="12" CornerRadius="8" Background="{DynamicResource SystemAccentColorLight}" Margin="0,0,0,12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="ARES Version Management" FontWeight="SemiBold" FontSize="14"/>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+                             <TextBlock Text="Select Release:" FontSize="12"/>
+                             <ComboBox ItemsSource="{Binding AvailableReleases}"
+                                      SelectedItem="{Binding SelectedRelease}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:AresRelease">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding Version}" />
+                                            <Border Background="#FF8C00" CornerRadius="4" Padding="4,0" IsVisible="{Binding IsBeta}">
+                                                <TextBlock Text="BETA" FontSize="10" Foreground="White" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text="(Installed)" IsVisible="{Binding IsInstalled}" FontStyle="Italic" Opacity="0.7"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <Button Grid.Row="0" Grid.Column="1" 
+                                Command="{Binding UpdateAresCommand}"
+                                IsEnabled="{Binding !UpdateInProgress}"
+                                VerticalAlignment="Bottom"
+                                Margin="12,0,0,0"
+                                Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ic:FluentIcon Icon="ArrowDownload" />
+                                <TextBlock Text="Install" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" 
+                                     IsIndeterminate="True" 
+                                     IsVisible="{Binding UpdateInProgress}"
+                                     Height="4" Margin="0,8,0,0"/>
+                    </Grid>
+                    
+                    <TextBlock Text="{Binding UpdateError}" Foreground="Red" FontSize="12" 
+                               IsVisible="{Binding UpdateError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+
             <Grid ColumnDefinitions="Auto,*"
                   RowDefinitions="Auto,Auto,Auto">
                 <TextBlock Grid.Row="0"
@@ -41,105 +91,115 @@
             <StackPanel Spacing="12"
                         IsVisible="{Binding ShowAdvancedOptions}">
                 <Grid ColumnDefinitions="Auto,*"
-                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="SQLite database path:" />
-                    <TextBox Grid.Row="0"
-                             Grid.Column="1"
-                             Margin="12,0,0,8"
-                             Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                               Text="Include beta releases:" />
+                    <ToggleSwitch Grid.Row="0"
+                                  Grid.Column="1"
+                                  Margin="12,0,0,8"
+                                  IsChecked="{Binding EditableIncludeBeta, Mode=TwoWay}" />
 
                     <TextBlock Grid.Row="1"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Database provider:" />
-                    <ComboBox Grid.Row="1"
-                              Grid.Column="1"
-                              Margin="12,0,0,8"
-                              ItemsSource="{Binding DatabaseProviders}"
-                              SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
+                               Text="SQLite database path:" />
+                    <TextBox Grid.Row="1"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="2"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="SQL Server connection string:" />
-                    <TextBox Grid.Row="2"
-                             Grid.Column="1"
-                             Margin="12,0,0,8"
-                             Text="{Binding EditableSqlServerConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                               Text="Database provider:" />
+                    <ComboBox Grid.Row="2"
+                              Grid.Column="1"
+                              Margin="12,0,0,8"
+                              ItemsSource="{Binding DatabaseProviders}"
+                              SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
 
                     <TextBlock Grid.Row="3"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Postgres connection string:" />
+                               Text="SQL Server connection string:" />
                     <TextBox Grid.Row="3"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditablePostgresConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableSqlServerConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="4"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Service endpoint:" />
+                               Text="Postgres connection string:" />
                     <TextBox Grid.Row="4"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableServiceEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditablePostgresConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="5"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="UI endpoint:" />
+                               Text="Service endpoint:" />
                     <TextBox Grid.Row="5"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableUiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableServiceEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="6"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="ARES data path:" />
+                               Text="UI endpoint:" />
                     <TextBox Grid.Row="6"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableUiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="7"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="ARES service process:" />
+                               Text="ARES data path:" />
                     <TextBox Grid.Row="7"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableAresServiceProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="8"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Installed ARES layout:" />
-                    <ComboBox Grid.Row="8"
-                              Grid.Column="1"
-                              Margin="12,0,0,8"
-                              ItemsSource="{Binding ReleaseLayouts}"
-                              SelectedItem="{Binding EditableInstalledAresLayout, Mode=TwoWay}" />
+                               Text="ARES service process:" />
+                    <TextBox Grid.Row="8"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableAresServiceProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="9"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
+                               Text="Installed ARES layout:" />
+                    <ComboBox Grid.Row="9"
+                              Grid.Column="1"
+                              Margin="12,0,0,8"
+                              ItemsSource="{Binding ReleaseLayouts}"
+                              SelectedItem="{Binding EditableInstalledAresLayout, Mode=TwoWay}" />
+
+                    <TextBlock Grid.Row="10"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
                                Text="ARES UI process:" />
-                    <TextBox Grid.Row="9"
+                    <TextBox Grid.Row="10"
                              Grid.Column="1"
                              Margin="12,0,0,0"
                              Text="{Binding EditableAresUiProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

@@ -12,9 +12,9 @@ namespace ARESLauncher.Services;
 /// </summary>
 public interface IAresDownloader
 {
-  Task<SemanticVersion[]> GetAvailableVersions(AresSource source, string? authToken);
+  Task<AresRelease[]> GetAvailableVersions(AresSource source, string? authToken);
 
-  Task<SemanticVersion[]> GetAvailableVersions(LauncherSource soruce);
+  Task<AresRelease[]> GetAvailableVersions(LauncherSource source, string? authToken);
 
   Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken,
     IProgress<double>? progress = null);
@@ -24,4 +24,6 @@ public interface IAresDownloader
   /// </summary>
   Task<string> Download(AresSource source, SemanticVersion version, string destination, string? authToken,
     IProgress<double>? progress = null);
+
+  void InvalidateCache();
 }
