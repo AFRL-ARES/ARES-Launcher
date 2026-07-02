@@ -8,4 +8,5 @@ public enum AresState
   NeedsDbUpdate,
   NeedsInstall,
   Updating,
+  ProcessOwnerConflict
 }

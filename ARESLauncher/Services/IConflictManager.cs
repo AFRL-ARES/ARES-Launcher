@@ -10,4 +10,6 @@ public interface IConflictManager
   void TakeOverService();
 
   Task Kill(); //._.
+
+  public bool IsCurrentUserProcessOwner { get; set; }
 }

@@ -11,11 +11,16 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
 		<ApplicationIcon>..\ARESLauncher\Assets\BlackARESLogo_Smol.ico</ApplicationIcon>
 		<AssemblyName>ARESLauncher</AssemblyName>
+		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
     
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
   </ItemGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<Version>0.3.0</Version>
+	</PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ARESLauncher\ARESLauncher.csproj" />

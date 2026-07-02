@@ -92,6 +92,10 @@ public partial class MainViewModel : ViewModelBase
       }
 
       await ConflictDialog.Handle(Unit.Default);
+
+      if(!conflictManager.IsCurrentUserProcessOwner)
+        ProcessOwnerConflict = !conflictManager.IsCurrentUserProcessOwner;
+
       ConflictsResolved = true;
     });
 
@@ -142,7 +146,8 @@ public partial class MainViewModel : ViewModelBase
       vm => vm.AresPresent,
       vm => vm.DatabaseStatus,
       vm => vm.CurrentUpdateStep,
-      (isRunning, isPresent, dbStatus, updateStep) =>
+      vm => vm.ProcessOwnerConflict,
+      (isRunning, isPresent, dbStatus, updateStep, processOwnerConflict) =>
       {
         if(updateStep != UpdateStep.Idle)
         {
@@ -165,6 +170,9 @@ public partial class MainViewModel : ViewModelBase
         if(dbStatus != DatabaseStatus.UpToDate)
           return AresState.NeedsDbUpdate;
 
+        if(processOwnerConflict)
+          return AresState.ProcessOwnerConflict;
+
         return AresState.Ready;
       }).ToProperty(this, vm => vm.AresState);
 
@@ -181,6 +189,7 @@ public partial class MainViewModel : ViewModelBase
             AresState.NeedsDbUpdate => "Update DB",
             AresState.NeedsInstall => "Install",
             AresState.Updating => "Updating...",
+            AresState.ProcessOwnerConflict => "Conflict",
             _ => throw new NotImplementedException()
           };
       }).ToProperty(this, vm => vm.ButtonText);
@@ -197,6 +206,7 @@ public partial class MainViewModel : ViewModelBase
             AresState.NeedsDbUpdate => UpdateDatabaseCommand,
             AresState.NeedsInstall => UpdateAresCommand,
             AresState.Updating => null,
+            AresState.ProcessOwnerConflict => null,
             _ => throw new NotImplementedException()
           };
       }).ToProperty(this, vm => vm.ButtonCommand);
@@ -212,6 +222,7 @@ public partial class MainViewModel : ViewModelBase
         AresState.NeedsDbUpdate => null,
         AresState.NeedsInstall => null,
         AresState.Updating => null,
+        AresState.ProcessOwnerConflict => null,
         _ => throw new NotImplementedException()
       }).ToProperty(this, vm => vm.AuxButtonContent);
 
@@ -226,6 +237,7 @@ public partial class MainViewModel : ViewModelBase
         AresState.NeedsDbUpdate => null,
         AresState.NeedsInstall => null,
         AresState.Updating => null,
+        AresState.ProcessOwnerConflict => null,
         _ => throw new NotImplementedException()
       }).ToProperty(this, vm => vm.AuxButtonCommand);
 
@@ -240,6 +252,7 @@ public partial class MainViewModel : ViewModelBase
         AresState.NeedsDbUpdate => "Database out of date",
         AresState.NeedsInstall => "Ready to install",
         AresState.Updating => "Update in progress",
+        AresState.ProcessOwnerConflict => "ARES process is owned by other user",
         _ => throw new NotImplementedException()
       }).ToProperty(this, vm => vm.AresStateDescription);
 
@@ -279,6 +292,9 @@ public partial class MainViewModel : ViewModelBase
 
   [Reactive]
   public partial bool LauncherUpdateInProgress { get; private set; }
+
+  [Reactive]
+  public partial bool ProcessOwnerConflict { get; private set; }
 
   public AresState AresState => _aresState.Value;
 

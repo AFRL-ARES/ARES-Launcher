@@ -108,9 +108,8 @@ public class AresStarter : IAresStarter
   public void TakeOwnershipUi(Process uiProcess)
   {
     if(_aresUiRunningSubject.Value)
-    {
       throw new InvalidOperationException("We already have a UI process running. Can't take ownership of a new one before stopping the other one.");
-    }
+    
     var uiTask = uiProcess.WaitForExitAndKillOnCancelAsync(_cancellationTokenSource.Token);
     ProcessUiTask(uiTask);
     _uiTask = uiTask;

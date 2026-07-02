@@ -15,13 +15,11 @@ public static class ProcessExtensions
       {
         if(!process.HasExited)
         {
-          // Kill the process (and optionally its children)
           process.Kill(entireProcessTree: true);
         }
       }
       catch(Exception ex)
       {
-        // Swallow exceptions like "already exited"
         Console.WriteLine($"Kill attempt failed: {ex.Message}");
       }
     });
