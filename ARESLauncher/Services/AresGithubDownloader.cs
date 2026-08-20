@@ -80,7 +80,12 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
           continue;
 
         if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion))
-          versions.Add(new AresRelease { Version = semanticVersion, IsBeta = release.Prerelease });
+          versions.Add(new AresRelease
+          {
+            Version = semanticVersion,
+            IsBeta = release.Prerelease,
+            ReleaseNotes = release.Body
+          });
       }
     }
 

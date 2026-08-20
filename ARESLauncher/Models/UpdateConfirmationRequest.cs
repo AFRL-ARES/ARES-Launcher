@@ -14,6 +14,7 @@ public class UpdateConfirmationRequest
 {
   public required SemanticVersion CurrentVersion { get; init; }
   public required SemanticVersion TargetVersion { get; init; }
+  public string ReleaseNotes { get; init; } = "";
   public bool HasSnapshot { get; set; }
 }
 

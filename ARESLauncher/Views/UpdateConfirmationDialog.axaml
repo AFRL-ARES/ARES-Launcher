@@ -5,11 +5,11 @@
         xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
         mc:Ignorable="d"
         d:DesignWidth="480"
-        d:DesignHeight="260"
+        d:DesignHeight="420"
         x:Class="ARESLauncher.UpdateConfirmationDialog"
         x:DataType="vm:UpdateConfirmationDialogViewModel"
         Width="480"
-        Height="260"
+        Height="420"
         CanResize="False"
         Title="Confirm ARES Update">
     <Border Padding="24">
@@ -24,6 +24,7 @@
             <TextBlock Text="Do you want to continue with this update?"
                        TextAlignment="Center"
                        IsVisible="{Binding !IsDowngrade}"/>
+            
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         Spacing="12"
@@ -36,6 +37,7 @@
                         MinWidth="120"
                         Command="{Binding ProceedCommand}" />
             </StackPanel>
+            
             <StackPanel Orientation="Vertical"
                         HorizontalAlignment="Center"
                         Spacing="12"
@@ -53,6 +55,26 @@
                 <Button Content="Cancel"
                         HorizontalAlignment="Stretch"
                         Command="{Binding CancelCommand}" />
+            </StackPanel>
+
+            <!-- Release Notes Section -->
+            <StackPanel Spacing="6" Margin="0,8,0,0">
+                <TextBlock Text="Release Notes"
+                           FontWeight="SemiBold"
+                           FontSize="13" />
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        Padding="8"
+                        Height="110">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <TextBlock Text="{Binding ReleaseNotes}"
+                                   TextWrapping="Wrap"
+                                   FontSize="12" />
+                    </ScrollViewer>
+                </Border>
             </StackPanel>
         </StackPanel>
     </Border>

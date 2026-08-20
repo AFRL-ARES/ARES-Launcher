@@ -344,7 +344,11 @@ public partial class MainViewModel : ViewModelBase
 
   public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
 
-  public AresRelease[] AvailableAresVersions { get; set; }
+   public AresRelease[] AvailableAresVersions { get; set; }
+
+   // Release notes for the currently selected/target ARES version (first available update).
+   public string? SelectedReleaseNotes =>
+     AvailableAresVersions?.FirstOrDefault()?.ReleaseNotes;
 
   private async Task UpdateAvailableVersions()
   {
@@ -436,6 +440,7 @@ public partial class MainViewModel : ViewModelBase
       {
         CurrentVersion = currentVersion ?? targetVersion,
         TargetVersion = targetVersion,
+        ReleaseNotes = latest.ReleaseNotes ?? "",
         HasSnapshot = hasSnapshot
       });
 
