@@ -257,12 +257,13 @@ public partial class MainViewModel : ViewModelBase
       }).ToProperty(this, vm => vm.AresStateDescription);
 
     _updateInProgress = this
-      .WhenAnyValue(vm => vm.InstalledAresVersion)
-      .Select(IsLatestAresVersion).ToProperty(this, vm => vm.UpdateInProgress);
+      .WhenAnyValue(vm => vm.CurrentUpdateStep)
+      .Select(step => step != UpdateStep.Idle)
+      .ToProperty(this, vm => vm.UpdateInProgress);
 
     _showProgressBar = this
       .WhenAnyValue(vm => vm.CurrentUpdateStep)
-      .Select(s => s == UpdateStep.Downloading)
+      .Select(step => step == UpdateStep.Downloading)
       .ToProperty(this, vm => vm.ShowProgressBar);
 
     _launcherReady = this
@@ -426,7 +427,7 @@ public partial class MainViewModel : ViewModelBase
     AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
     var latest = AvailableAresVersions.FirstOrDefault();
     
-    if(latest is null) 
+    if(latest is null)
       return;
     
     var targetVersion = latest.Version;
@@ -547,3 +548,5 @@ public partial class MainViewModel : ViewModelBase
     return targetVersion.Major == currentVersion.Major && targetVersion.Minor > currentVersion.Minor;
   }
 }
+
+
