@@ -26,6 +26,8 @@ public interface IPyAresManager
   IObservable<bool> AnyPyAresRunning { get; }
   IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
 
+  IObservable<string> GetOutput(string componentName);
+
   Task StartAll();
   Task StopAll();
 }
@@ -37,6 +39,7 @@ public class PyAresManager : IPyAresManager
   private readonly BehaviorSubject<bool> _anyRunningSubject = new(false);
   private readonly BehaviorSubject<IReadOnlyList<PyAresComponentStatus>> _statusSubject = new(new List<PyAresComponentStatus>());
   private readonly Dictionary<string, CancellationTokenSource> _componentTokens = new();
+  private readonly Dictionary<string, BehaviorSubject<string>> _outputSubjects = new();
 
   public PyAresManager(IAppConfigurationService configurationService, ILogger<PyAresManager> logger)
   {
@@ -48,6 +51,17 @@ public class PyAresManager : IPyAresManager
 
   public IObservable<bool> AnyPyAresRunning { get; }
   public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
+
+  public IObservable<string> GetOutput(string componentName)
+  {
+    if(!_outputSubjects.TryGetValue(componentName, out var subject))
+    {
+      subject = new BehaviorSubject<string>(string.Empty);
+      _outputSubjects[componentName] = subject;
+    }
+
+    return subject.AsObservable();
+  }
 
   public async Task StartAll()
   {
@@ -117,9 +131,22 @@ public class PyAresManager : IPyAresManager
     var cts = new CancellationTokenSource();
     _componentTokens[component.Name] = cts;
 
+    // Ensure we have an output subject for this component and reset it
+    if(!_outputSubjects.TryGetValue(component.Name, out var outputSubject))
+    {
+      outputSubject = new BehaviorSubject<string>(string.Empty);
+      _outputSubjects[component.Name] = outputSubject;
+    }
+    else
+    {
+      outputSubject.OnNext(string.Empty);
+    }
+
     var command = Cli.Wrap(interpreter)
       .WithWorkingDirectory(workingDir)
-      .WithArguments(BuildArguments(component));
+      .WithArguments(BuildArguments(component))
+      .WithStandardOutputPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)))
+      .WithStandardErrorPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)));
 
     var task = command.ExecuteAsync(cts.Token).Task;
 
@@ -154,6 +181,22 @@ public class PyAresManager : IPyAresManager
     await Task.CompletedTask;
   }
 
+  private void AppendOutput(string componentName, string line)
+  {
+    if(!_outputSubjects.TryGetValue(componentName, out var subject))
+    {
+      subject = new BehaviorSubject<string>(string.Empty);
+      _outputSubjects[componentName] = subject;
+    }
+
+    var current = subject.Value ?? string.Empty;
+    var updated = string.IsNullOrEmpty(current)
+      ? line
+      : current + Environment.NewLine + line;
+
+    subject.OnNext(updated);
+  }
+
   private static string BuildArguments(PyAresComponentConfig component)
   {
     var args = new List<string>();
@@ -168,4 +211,3 @@ public class PyAresManager : IPyAresManager
     return string.Join(" ", args);
   }
 }
-

@@ -20,16 +20,34 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
 {
   private readonly IAppConfigurationService _configurationService;
   private readonly IPyAresManager _pyAresManager;
+  private IDisposable? _outputSubscription;
 
   public PyAresConfigurationViewModel(IAppConfigurationService configurationService, IPyAresManager pyAresManager)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
     _pyAresManager = pyAresManager ?? throw new ArgumentNullException(nameof(pyAresManager));
+    SelectedOutput = "";
 
     Components = new ObservableCollection<PyAresComponentEditorViewModel>();
     LoadFromConfiguration();
 
     _pyAresManager.ComponentStatuses.Subscribe(UpdateStatuses);
+
+    this.WhenAnyValue(vm => vm.SelectedComponent)
+      .Subscribe(component =>
+      {
+        _outputSubscription?.Dispose();
+        SelectedOutput = string.Empty;
+
+        if(component is null)
+        {
+          return;
+        }
+
+        _outputSubscription = _pyAresManager
+          .GetOutput(component.Name)
+          .Subscribe(output => SelectedOutput = output);
+      });
 
     AddComponentCommand = ReactiveCommand.Create(AddComponent);
     NewComponentCommand = ReactiveCommand.Create(NewComponent);
@@ -47,6 +65,9 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
 
   [Reactive]
   public partial PyAresComponentEditorViewModel? SelectedComponent { get; set; }
+
+  [Reactive]
+  public partial string SelectedOutput { get; set; }
 
   public ReactiveCommand<Unit, Unit> AddComponentCommand { get; }
   public ReactiveCommand<Unit, Unit> NewComponentCommand { get; }
@@ -199,4 +220,3 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     }
   }
 }
-
