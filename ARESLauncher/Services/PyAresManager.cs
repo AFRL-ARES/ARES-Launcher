@@ -200,6 +200,10 @@ public class PyAresManager : IPyAresManager
   private static string BuildArguments(PyAresComponentConfig component)
   {
     var args = new List<string>();
+
+    // Run Python unbuffered so print() output appears live
+    args.Add("-u");
+
     if(!string.IsNullOrWhiteSpace(component.EntryPoint))
     {
       args.Add(component.EntryPoint);

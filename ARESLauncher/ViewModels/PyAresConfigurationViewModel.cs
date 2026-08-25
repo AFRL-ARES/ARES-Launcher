@@ -26,7 +26,7 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
     _pyAresManager = pyAresManager ?? throw new ArgumentNullException(nameof(pyAresManager));
-    SelectedOutput = "";
+    SelectedOutput = string.Empty;
 
     Components = new ObservableCollection<PyAresComponentEditorViewModel>();
     LoadFromConfiguration();
@@ -34,18 +34,21 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     _pyAresManager.ComponentStatuses.Subscribe(UpdateStatuses);
 
     this.WhenAnyValue(vm => vm.SelectedComponent)
-      .Subscribe(component =>
+      .Select(component => component?.Name)
+      .DistinctUntilChanged()
+      .Subscribe(componentName =>
       {
         _outputSubscription?.Dispose();
         SelectedOutput = string.Empty;
 
-        if(component is null)
+        if(string.IsNullOrWhiteSpace(componentName))
         {
           return;
         }
 
         _outputSubscription = _pyAresManager
-          .GetOutput(component.Name)
+          .GetOutput(componentName)
+          .ObserveOn(RxApp.MainThreadScheduler)
           .Subscribe(output => SelectedOutput = output);
       });
 
