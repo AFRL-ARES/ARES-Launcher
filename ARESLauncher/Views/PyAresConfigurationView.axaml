@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ARESLauncher.ViewModels"
+             mc:Ignorable="d"
+             x:Class="ARESLauncher.Views.PyAresConfigurationView"
+             x:DataType="vm:PyAresConfigurationViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="12">
+            <TextBlock Text="PyAres Components" FontSize="16" FontWeight="SemiBold"/>
+
+            <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,*">
+                <ListBox Grid.Row="0" Grid.Column="0" Margin="0,0,12,0"
+                         ItemsSource="{Binding Components}"
+                         SelectedItem="{Binding SelectedComponent}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PyAresComponentEditorViewModel">
+                            <StackPanel Orientation="Vertical" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Opacity="0.7"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="0" Grid.Column="1" Spacing="8">
+                    <TextBlock Text="Name" FontSize="12"/>
+                    <TextBox Text="{Binding SelectedComponent.Name, Mode=TwoWay}"/>
+
+                    <TextBlock Text="Description" FontSize="12"/>
+                    <TextBox Text="{Binding SelectedComponent.Description, Mode=TwoWay}" TextWrapping="Wrap"/>
+
+                    <TextBlock Text="Working directory" FontSize="12"/>
+                    <TextBox Text="{Binding SelectedComponent.WorkingDirectory, Mode=TwoWay}"/>
+
+                    <TextBlock Text="Python interpreter" FontSize="12"/>
+                    <TextBox Text="{Binding SelectedComponent.PythonInterpreterPath, Mode=TwoWay}"/>
+
+                    <TextBlock Text="Entry point (script/module)" FontSize="12"/>
+                    <TextBox Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
+
+                    <TextBlock Text="Arguments" FontSize="12"/>
+                    <TextBox Text="{Binding SelectedComponent.Arguments, Mode=TwoWay}"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                        <CheckBox IsChecked="{Binding SelectedComponent.Enabled, Mode=TwoWay}" Content="Enabled"/>
+                        <CheckBox IsChecked="{Binding SelectedComponent.StartWithAres, Mode=TwoWay}" Content="Start with ARES"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+                    <Button Content="Add" Command="{Binding AddComponentCommand}"/>
+                    <Button Content="Remove" Command="{Binding RemoveSelectedComponentCommand}"/>
+                    <Button Content="Reset" Command="{Binding ResetCommand}"/>
+                    <Button Content="Save" Command="{Binding SaveCommand}"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
+

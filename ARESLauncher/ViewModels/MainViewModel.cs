@@ -29,7 +29,10 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _buttonCommand;
   private readonly ObservableAsPropertyHelper<string> _buttonText;
   private readonly IConflictManager _conflictManager;
+  private readonly IPyAresManager _pyAresManager;
   private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
+
+  public PyAresConfigurationViewModel PyAresConfig { get; }
   private readonly IDatabaseManager _databaseManager;
   private readonly ObservableAsPropertyHelper<bool> _launcherReady;
   private readonly ObservableAsPropertyHelper<double> _progress;
@@ -50,7 +53,8 @@ public partial class MainViewModel : ViewModelBase
     ILauncherUpdater launcherUpdater,
     IDatabaseManager databaseManager,
     IBrowserOpener browserOpener,
-    IConflictManager conflictManager)
+    IConflictManager conflictManager,
+    IPyAresManager pyAresManager, PyAresConfigurationViewModel pyAresConfigurationViewModel)
   {
     AvailableAresVersions = [];
     Overview = overview ?? throw new ArgumentNullException(nameof(overview));
@@ -61,6 +65,8 @@ public partial class MainViewModel : ViewModelBase
     _launcherUpdater = launcherUpdater;
     _databaseManager = databaseManager;
     _conflictManager = conflictManager;
+    _pyAresManager = pyAresManager;
+    PyAresConfig = pyAresConfigurationViewModel;
     _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
     InstalledAresVersion = string.Empty;
     AvailableAresUpdateVersion = string.Empty;
@@ -69,11 +75,16 @@ public partial class MainViewModel : ViewModelBase
     UpdateDatabaseCommand = ReactiveCommand.CreateFromTask(UpdateDb);
     StartAresCommand = ReactiveCommand.CreateFromTask(async () =>
     {
-      aresStarter.Start();
+      _aresStarter.Start();
+      await _pyAresManager.StartAll();
       await Task.Delay(TimeSpan.FromSeconds(1));
       browserOpener.Open();
     });
-    StopAresCommand = ReactiveCommand.CreateFromTask(aresStarter.Stop);
+    StopAresCommand = ReactiveCommand.CreateFromTask(async () =>
+    {
+      await _pyAresManager.StopAll();
+      await _aresStarter.Stop();
+    });
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
     OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
@@ -548,5 +559,30 @@ public partial class MainViewModel : ViewModelBase
     return targetVersion.Major == currentVersion.Major && targetVersion.Minor > currentVersion.Minor;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

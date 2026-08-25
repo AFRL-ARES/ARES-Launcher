@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:areslauncher="using:ARESLauncher"
              xmlns:ic="using:FluentIcons.Avalonia"
              xmlns:avalonia="using:LoadingIndicators.Avalonia"
@@ -144,6 +144,9 @@
             <TabItem Header="Configuration">
                 <views:ConfigurationEditorView DataContext="{Binding Editor}" />
             </TabItem>
+                    <TabItem Header="PyAres">
+                <views:PyAresConfigurationView DataContext="{Binding PyAresConfig}" />
+            </TabItem>
         </TabControl>
 
         <Border IsVisible="{Binding LauncherUpdateInProgress}"
@@ -166,3 +169,4 @@
         </Border>
     </Grid>
 </UserControl>
+

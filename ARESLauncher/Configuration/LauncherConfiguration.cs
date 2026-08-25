@@ -42,4 +42,22 @@ public class LauncherConfiguration
   public string AresServiceProcessName { get; set; } = "AresService";
   public string AresUiProcessName { get; set; } = "UI";
   public bool IncludeBeta { get; set; } = false;
+
+  public PyAresComponentConfig[] PyAresComponents { get; set; } = Array.Empty<PyAresComponentConfig>();
 }
+
+
+
+public class PyAresComponentConfig
+{
+  public string Name { get; set; } = "";
+  public string Description { get; set; } = "";
+  public string WorkingDirectory { get; set; } = "";
+  public string EntryPoint { get; set; } = ""; // script path or module name
+  public string Arguments { get; set; } = "";
+  public string PythonInterpreterPath { get; set; } = "";
+  public bool Enabled { get; set; } = true;
+  public bool StartWithAres { get; set; } = true;
+}
+
+

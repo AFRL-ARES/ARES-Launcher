@@ -28,8 +28,11 @@ public static class ServiceCollectionExtensions
     collection.AddSingleton<ICertificateManager, CertificateManager>();
     collection.AddSingleton<IBrowserOpener, BrowserOpener>();
     collection.AddSingleton<IConflictManager, ConflictManager>();
+    collection.AddSingleton<IPyAresManager, PyAresManager>();
     collection.AddTransient<ConfigurationOverviewViewModel>();
     collection.AddTransient<ConfigurationEditorViewModel>();
+    collection.AddTransient<PyAresConfigurationViewModel>();
     collection.AddTransient<MainViewModel>();
   }
 }
+

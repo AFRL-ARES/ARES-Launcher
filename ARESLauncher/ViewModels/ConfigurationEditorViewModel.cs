@@ -23,6 +23,8 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   private readonly IReadOnlyList<DatabaseProvider> _databaseProviders;
   private readonly IReadOnlyList<AresReleaseLayout> _releaseLayouts;
 
+  public ObservableCollection<PyAresComponentEditorViewModel> PyAresComponents { get; } = new();
+
   public ConfigurationEditorViewModel(IAppConfigurationService configurationService, 
     IAppSettingsUpdater appSettingsUpdater,
     IAresUpdater aresUpdater,
@@ -351,6 +353,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     return !string.IsNullOrWhiteSpace(repo.Owner) && !string.IsNullOrWhiteSpace(repo.Repo);
   }
 }
+
 
 
 
