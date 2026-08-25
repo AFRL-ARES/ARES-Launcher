@@ -81,12 +81,23 @@
                     <TextBox Text="{Binding SelectedComponent.Arguments, Mode=TwoWay}"/>
 
                     <TextBlock Text="Output" FontSize="12" Margin="0,8,0,0"/>
-                    <ScrollViewer Height="150">
-                        <TextBox Text="{Binding SelectedOutput}" 
-                                 IsReadOnly="True" 
-                                 AcceptsReturn="True" 
-                                 TextWrapping="Wrap"/>
-                    </ScrollViewer>
+                    <!-- Fixed-height, internally scrollable output area -->
+                    <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="2">
+                        <ScrollViewer Height="150"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <TextBox Text="{Binding SelectedOutput}" 
+                                     IsReadOnly="True" 
+                                     AcceptsReturn="True" 
+                                     TextWrapping="Wrap"
+                                     HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Stretch"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                        </ScrollViewer>
+                    </Border>
 
                     <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
                         <CheckBox IsChecked="{Binding SelectedComponent.Enabled, Mode=TwoWay}" Content="Enabled"/>
