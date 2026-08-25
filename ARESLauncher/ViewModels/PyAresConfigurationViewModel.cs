@@ -7,6 +7,10 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using System.Threading.Tasks;
 
 namespace ARESLauncher.ViewModels;
 
@@ -25,6 +29,8 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     RemoveSelectedComponentCommand = ReactiveCommand.Create(RemoveSelectedComponent, this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
     SaveCommand = ReactiveCommand.Create(SaveConfiguration);
     ResetCommand = ReactiveCommand.Create(LoadFromConfiguration);
+    BrowseWorkingDirectoryCommand = ReactiveCommand.CreateFromTask(BrowseWorkingDirectory);
+    BrowsePythonInterpreterCommand = ReactiveCommand.CreateFromTask(BrowsePythonInterpreter);
   }
 
   public ObservableCollection<PyAresComponentEditorViewModel> Components { get; }
@@ -36,6 +42,8 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> RemoveSelectedComponentCommand { get; }
   public ReactiveCommand<Unit, Unit> SaveCommand { get; }
   public ReactiveCommand<Unit, Unit> ResetCommand { get; }
+  public ReactiveCommand<Unit, Unit> BrowseWorkingDirectoryCommand { get; }
+  public ReactiveCommand<Unit, Unit> BrowsePythonInterpreterCommand { get; }
 
   private void LoadFromConfiguration()
   {
@@ -54,12 +62,20 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
 
   private void AddComponent()
   {
-    var cfg = new PyAresComponentConfig
+    PyAresComponentConfig cfg;
+    if(SelectedComponent is not null)
     {
-      Name = "New PyAres component",
-      Enabled = true,
-      StartWithAres = true
-    };
+      cfg = SelectedComponent.ToConfig();
+    }
+    else
+    {
+      cfg = new PyAresComponentConfig
+      {
+        Name = "New PyAres component",
+        Enabled = true,
+        StartWithAres = true
+      };
+    }
 
     var vm = new PyAresComponentEditorViewModel(cfg);
     Components.Add(vm);
@@ -88,6 +104,45 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     });
 
     LoadFromConfiguration();
+  }
+
+  private async Task BrowseWorkingDirectory()
+  {
+    if(SelectedComponent is null)
+      return;
+
+    if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+       && desktop.MainWindow is Window window)
+    {
+      var dialog = new OpenFolderDialog();
+      var result = await dialog.ShowAsync(window);
+      if(!string.IsNullOrWhiteSpace(result))
+      {
+        SelectedComponent.WorkingDirectory = result;
+      }
+    }
+  }
+
+  private async Task BrowsePythonInterpreter()
+  {
+    if(SelectedComponent is null)
+      return;
+
+    if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+       && desktop.MainWindow is Window window)
+    {
+      var dialog = new OpenFileDialog
+      {
+        AllowMultiple = false,
+        Title = "Select Python Interpreter"
+      };
+      var result = await dialog.ShowAsync(window);
+      var path = result?.FirstOrDefault();
+      if(!string.IsNullOrWhiteSpace(path))
+      {
+        SelectedComponent.PythonInterpreterPath = path;
+      }
+    }
   }
 }
 

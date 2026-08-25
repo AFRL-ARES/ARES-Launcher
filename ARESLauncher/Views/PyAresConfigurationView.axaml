@@ -32,10 +32,16 @@
                     <TextBox Text="{Binding SelectedComponent.Description, Mode=TwoWay}" TextWrapping="Wrap"/>
 
                     <TextBlock Text="Working directory" FontSize="12"/>
-                    <TextBox Text="{Binding SelectedComponent.WorkingDirectory, Mode=TwoWay}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBox Width="260" Text="{Binding SelectedComponent.WorkingDirectory, Mode=TwoWay}"/>
+                        <Button Content="Browse" Command="{Binding BrowseWorkingDirectoryCommand}"/>
+                    </StackPanel>
 
                     <TextBlock Text="Python interpreter" FontSize="12"/>
-                    <TextBox Text="{Binding SelectedComponent.PythonInterpreterPath, Mode=TwoWay}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBox Width="260" Text="{Binding SelectedComponent.PythonInterpreterPath, Mode=TwoWay}"/>
+                        <Button Content="Browse" Command="{Binding BrowsePythonInterpreterCommand}"/>
+                    </StackPanel>
 
                     <TextBlock Text="Entry point (script/module)" FontSize="12"/>
                     <TextBox Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
@@ -59,4 +65,5 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+
 
