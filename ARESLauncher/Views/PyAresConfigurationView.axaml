@@ -11,18 +11,47 @@
             <TextBlock Text="PyAres Components" FontSize="16" FontWeight="SemiBold"/>
 
             <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,*">
-                <ListBox Grid.Row="0" Grid.Column="0" Margin="0,0,12,0"
-                         ItemsSource="{Binding Components}"
-                         SelectedItem="{Binding SelectedComponent}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:PyAresComponentEditorViewModel">
-                            <StackPanel Orientation="Vertical" Margin="0,0,0,4">
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Opacity="0.7"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+<ListBox Grid.Row="0" 
+         Grid.Column="0" 
+         Margin="0,0,12,0" 
+         ItemsSource="{Binding Components}" 
+         SelectedItem="{Binding SelectedComponent}">
+    
+    <ListBox.Styles>
+        <!-- Define the Ellipse styles once at the ListBox level to keep the DataTemplate clean -->
+        <Style Selector="Ellipse.status-dot">
+            <Setter Property="Fill" Value="Red"/>
+        </Style>
+        <Style Selector="Ellipse.status-dot.running">
+            <Setter Property="Fill" Value="Green"/>
+        </Style>
+    </ListBox.Styles>
+
+    <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:PyAresComponentEditorViewModel">
+            <StackPanel Orientation="Vertical" Margin="0,0,0,4">
+                
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <!-- The Ellipse toggles the .running class dynamically based on your boolean -->
+                    <Ellipse Width="10" 
+                             Height="10" 
+                             Classes.status-dot="True"
+                             Classes.running="{Binding IsRunning}"/>
+                    
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                </StackPanel>
+                
+                <TextBlock Text="{Binding Description}" 
+                           FontSize="11" 
+                           TextWrapping="Wrap" 
+                           Opacity="0.7"/>
+               
+                
+            </StackPanel>
+        </DataTemplate>
+    </ListBox.ItemTemplate>
+</ListBox>
+
 
                 <StackPanel Grid.Row="0" Grid.Column="1" Spacing="8">
                     <TextBlock Text="Name" FontSize="12"/>
@@ -44,10 +73,15 @@
                     </StackPanel>
 
                     <TextBlock Text="Entry point (script/module)" FontSize="12"/>
-                    <TextBox Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBox Width="260" Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
+                        <Button Content="Browse" Command="{Binding BrowseEntryPointCommand}"/>
+                    </StackPanel>
 
                     <TextBlock Text="Arguments" FontSize="12"/>
                     <TextBox Text="{Binding SelectedComponent.Arguments, Mode=TwoWay}"/>
+
+                    <TextBlock Text="Port" FontSize="12"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
                         <CheckBox IsChecked="{Binding SelectedComponent.Enabled, Mode=TwoWay}" Content="Enabled"/>
@@ -56,6 +90,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+                    <Button Content="New" Command="{Binding NewComponentCommand}"/>
                     <Button Content="Add" Command="{Binding AddComponentCommand}"/>
                     <Button Content="Remove" Command="{Binding RemoveSelectedComponentCommand}"/>
                     <Button Content="Reset" Command="{Binding ResetCommand}"/>
@@ -65,5 +100,3 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-
-

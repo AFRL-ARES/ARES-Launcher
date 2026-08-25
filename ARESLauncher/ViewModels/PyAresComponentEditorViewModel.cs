@@ -41,6 +41,9 @@ public partial class PyAresComponentEditorViewModel : ViewModelBase
   [Reactive]
   public partial bool StartWithAres { get; set; }
 
+  [Reactive]
+  public partial bool IsRunning { get; set; }
+
   public PyAresComponentConfig ToConfig()
   {
     return new PyAresComponentConfig
