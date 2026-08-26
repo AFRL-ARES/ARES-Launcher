@@ -10,57 +10,12 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using ARESLauncher.Configuration;
+using ARESLauncher.Models.PyAres;
 using ARESLauncher.Services.Configuration;
 using CliWrap;
 using Microsoft.Extensions.Logging;
 
 namespace ARESLauncher.Services;
-
-public class PyAresComponentStatus
-{
-  public string Name { get; set; } = "";
-  public bool IsRunning { get; set; }
-  public string? LastError { get; set; }
-}
-
-public class PyAresProcessInfo
-{
-  public string Name { get; set; } = "";
-  public int Pid { get; set; }
-  public string WorkingDirectory { get; set; } = "";
-  public string EntryPoint { get; set; } = "";
-  public bool IsAlive { get; set; }
-}
-
-public class PyAresRuntimeEntry
-{
-  public string Name { get; set; } = "";
-  public int Pid { get; set; }
-  public string WorkingDirectory { get; set; } = "";
-  public string EntryPoint { get; set; } = "";
-}
-
-public class PyAresRuntimeState
-{
-  public DateTime LastUpdated { get; set; }
-  public List<PyAresRuntimeEntry> Components { get; set; } = new();
-}
-
-public interface IPyAresManager
-{
-  IObservable<bool> AnyPyAresRunning { get; }
-  IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
-
-  IObservable<string> GetOutput(string componentName);
-
-  Task StartAll();
-  Task StopAll();
-  Task RestartComponent(string name);
-
-  Task<IReadOnlyList<PyAresProcessInfo>> GetOrphanedProcessesAsync();
-  Task StopOrphanedProcessesAsync();
-  Task AttachExistingProcessesAsync();
-}
 
 public class PyAresManager : IPyAresManager
 {
@@ -72,6 +27,7 @@ public class PyAresManager : IPyAresManager
   private readonly Dictionary<string, Task> _componentTasks = new();
   private readonly Dictionary<string, BehaviorSubject<string>> _outputSubjects = new();
   private readonly Dictionary<string, int> _attachedProcesses = new();
+  private readonly object _runtimeStateLock = new();
   private readonly string _runtimeStatePath;
 
   public PyAresManager(IAppConfigurationService configurationService, ILogger<PyAresManager> logger)
@@ -84,9 +40,6 @@ public class PyAresManager : IPyAresManager
     var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
     _runtimeStatePath = Path.Combine(appData, "ARESLauncher", "PyAresRuntime.json");
   }
-
-  public IObservable<bool> AnyPyAresRunning { get; }
-  public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
 
   public IObservable<string> GetOutput(string componentName)
   {
@@ -507,26 +460,29 @@ public class PyAresManager : IPyAresManager
 
   private void SaveRuntimeState(PyAresRuntimeState state)
   {
-    try
+    lock(_runtimeStateLock)
     {
-      state.LastUpdated = DateTime.UtcNow;
-      var directory = Path.GetDirectoryName(_runtimeStatePath);
-      if(!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+      try
       {
-        Directory.CreateDirectory(directory);
+        state.LastUpdated = DateTime.UtcNow;
+        var directory = Path.GetDirectoryName(_runtimeStatePath);
+        if(!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+          Directory.CreateDirectory(directory);
+        }
+
+        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
+        {
+          WriteIndented = true,
+          DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        });
+
+        File.WriteAllText(_runtimeStatePath, json);
       }
-
-      var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
+      catch(Exception ex)
       {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-      });
-
-      File.WriteAllText(_runtimeStatePath, json);
-    }
-    catch(Exception ex)
-    {
-      _logger.LogWarning(ex, "Failed to save PyAres runtime state to {Path}", _runtimeStatePath);
+        _logger.LogWarning(ex, "Failed to save PyAres runtime state to {Path}", _runtimeStatePath);
+      }
     }
   }
 
@@ -548,4 +504,7 @@ public class PyAresManager : IPyAresManager
       }
     });
   }
+
+  public IObservable<bool> AnyPyAresRunning { get; }
+  public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
 }

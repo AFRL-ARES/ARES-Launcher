@@ -13,6 +13,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using System.Threading.Tasks;
+using ARESLauncher.Models.PyAres;
 
 namespace ARESLauncher.ViewModels;
 

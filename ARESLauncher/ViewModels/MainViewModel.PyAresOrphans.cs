@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using ARESLauncher.Services;
+using ARESLauncher.Models.PyAres;
 
 namespace ARESLauncher.ViewModels;
 

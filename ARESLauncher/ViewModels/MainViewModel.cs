@@ -1,4 +1,5 @@
 using ARESLauncher.Models;
+using ARESLauncher.Models.PyAres;
 using ARESLauncher.Services;
 using ARESLauncher.Tools;
 using Avalonia;
