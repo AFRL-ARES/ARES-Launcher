@@ -62,6 +62,9 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     BrowseWorkingDirectoryCommand = ReactiveCommand.CreateFromTask(BrowseWorkingDirectory);
     BrowsePythonInterpreterCommand = ReactiveCommand.CreateFromTask(BrowsePythonInterpreter);
     BrowseEntryPointCommand = ReactiveCommand.CreateFromTask(BrowseEntryPoint);
+    RestartSelectedComponentCommand = ReactiveCommand.CreateFromTask(
+      RestartSelectedComponent,
+      this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
   }
 
   public ObservableCollection<PyAresComponentEditorViewModel> Components { get; }
@@ -80,6 +83,7 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> BrowseWorkingDirectoryCommand { get; }
   public ReactiveCommand<Unit, Unit> BrowsePythonInterpreterCommand { get; }
   public ReactiveCommand<Unit, Unit> BrowseEntryPointCommand { get; }
+  public ReactiveCommand<Unit, Unit> RestartSelectedComponentCommand { get; }
 
   private void LoadFromConfiguration()
   {
@@ -221,5 +225,13 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
         SelectedComponent.EntryPoint = System.IO.Path.GetFileName(path);
       }
     }
+  }
+
+  private async Task RestartSelectedComponent()
+  {
+    if(SelectedComponent is null)
+      return;
+
+    await _pyAresManager.RestartComponent(SelectedComponent.Name);
   }
 }

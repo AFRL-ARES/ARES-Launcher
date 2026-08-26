@@ -30,6 +30,7 @@ public interface IPyAresManager
 
   Task StartAll();
   Task StopAll();
+  Task RestartComponent(string name);
 }
 
 public class PyAresManager : IPyAresManager
@@ -113,6 +114,50 @@ public class PyAresManager : IPyAresManager
     _anyRunningSubject.OnNext(false);
   }
 
+  public async Task RestartComponent(string name)
+  {
+    var config = _configurationService.Current.PyAresComponents?.FirstOrDefault(c => c.Name == name);
+    if(config is null)
+    {
+      _logger.LogWarning("Requested restart for PyAres component {Name}, but no configuration was found.", name);
+      return;
+    }
+
+    if(_componentTokens.TryGetValue(name, out var existingCts))
+    {
+      try
+      {
+        await existingCts.CancelAsync();
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Failed to cancel PyAres component {Name} during restart", name);
+      }
+    }
+
+    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
+    var status = statuses.FirstOrDefault(s => s.Name == name);
+    if(status is null)
+    {
+      status = new PyAresComponentStatus { Name = name };
+      statuses.Add(status);
+      _statusSubject.OnNext(statuses);
+    }
+
+    try
+    {
+      await StartComponentInternal(config, status);
+    }
+    catch(Exception ex)
+    {
+      status.IsRunning = false;
+      status.LastError = ex.Message;
+      _logger.LogError(ex, "Failed to restart PyAres component {Name}", name);
+      _statusSubject.OnNext(statuses);
+      _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
+    }
+  }
+
   private async Task StartComponentInternal(PyAresComponentConfig component, PyAresComponentStatus status)
   {
     var interpreter = string.IsNullOrWhiteSpace(component.PythonInterpreterPath) ? "python" : component.PythonInterpreterPath;
@@ -171,11 +216,11 @@ public class PyAresManager : IPyAresManager
 
     status.IsRunning = true;
     status.LastError = null;
-    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
-    var existing = statuses.FirstOrDefault(s => s.Name == status.Name);
+    var currentStatuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
+    var existing = currentStatuses.FirstOrDefault(s => s.Name == status.Name);
     if(existing is null)
-      statuses.Add(status);
-    _statusSubject.OnNext(statuses);
+      currentStatuses.Add(status);
+    _statusSubject.OnNext(currentStatuses);
     _anyRunningSubject.OnNext(true);
 
     await Task.CompletedTask;
