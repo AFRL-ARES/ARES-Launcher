@@ -224,9 +224,7 @@ public class PyAresManager : IPyAresManager
       }
 
       if(info.IsAlive)
-      {
         infos.Add(info);
-      }
     }
 
     return Task.FromResult<IReadOnlyList<PyAresProcessInfo>>(infos);
@@ -261,9 +259,8 @@ public class PyAresManager : IPyAresManager
     // Reflect that nothing is running anymore
     var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
     foreach(var status in statuses)
-    {
       status.IsRunning = false;
-    }
+
     _statusSubject.OnNext(statuses);
     _anyRunningSubject.OnNext(false);
 
@@ -281,9 +278,8 @@ public class PyAresManager : IPyAresManager
       {
         var proc = Process.GetProcessById(entry.Pid);
         if(proc.HasExited)
-        {
           continue;
-        }
+        
 
         _attachedProcesses[entry.Name] = entry.Pid;
 
@@ -319,14 +315,10 @@ public class PyAresManager : IPyAresManager
     var workingDir = string.IsNullOrWhiteSpace(component.WorkingDirectory) ? Directory.GetCurrentDirectory() : component.WorkingDirectory;
 
     if(!string.IsNullOrWhiteSpace(component.PythonInterpreterPath) && !File.Exists(component.PythonInterpreterPath))
-    {
       throw new FileNotFoundException($"Python interpreter not found at {component.PythonInterpreterPath}");
-    }
 
     if(!string.IsNullOrWhiteSpace(component.WorkingDirectory) && !Directory.Exists(component.WorkingDirectory))
-    {
       throw new DirectoryNotFoundException($"Working directory not found: {component.WorkingDirectory}");
-    }
 
     var cts = new CancellationTokenSource();
     _componentTokens[component.Name] = cts;
