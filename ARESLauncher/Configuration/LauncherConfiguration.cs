@@ -58,6 +58,7 @@ public class PyAresComponentConfig
   public string PythonInterpreterPath { get; set; } = "";
   public bool Enabled { get; set; } = true;
   public bool StartWithAres { get; set; } = true;
+  public bool AutoRestart { get; set; } = false;
 }
 
 

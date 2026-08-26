@@ -366,6 +366,8 @@ public class PyAresManager : IPyAresManager
 
     task.ContinueWith(t =>
     {
+      var autoRestart = false;
+
       if(t.IsFaulted)
       {
         status.IsRunning = false;
@@ -381,6 +383,15 @@ public class PyAresManager : IPyAresManager
       _componentTokens.Remove(component.Name);
       _componentTasks.Remove(component.Name);
       RemoveRuntimeEntry(component.Name);
+
+      if(component.AutoRestart)
+      {
+        // Start a fresh instance; let the new call update status/subjects
+        _logger.LogInformation("PyAres component {Name} exited; auto-restarting", component.Name);
+
+        _ = StartComponentInternal(component, status);
+        return;
+      }
 
       _anyRunningSubject.OnNext(_componentTokens.Count > 0);
       _statusSubject.OnNext((_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList());

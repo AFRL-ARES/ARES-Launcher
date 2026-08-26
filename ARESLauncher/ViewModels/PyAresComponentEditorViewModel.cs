@@ -15,6 +15,7 @@ public partial class PyAresComponentEditorViewModel : ViewModelBase
     PythonInterpreterPath = config.PythonInterpreterPath;
     Enabled = config.Enabled;
     StartWithAres = config.StartWithAres;
+    AutoRestart = config.AutoRestart;
   }
 
   [Reactive]
@@ -42,6 +43,9 @@ public partial class PyAresComponentEditorViewModel : ViewModelBase
   public partial bool StartWithAres { get; set; }
 
   [Reactive]
+  public partial bool AutoRestart { get; set; }
+
+  [Reactive]
   public partial bool IsRunning { get; set; }
 
   public PyAresComponentConfig ToConfig()
@@ -55,7 +59,8 @@ public partial class PyAresComponentEditorViewModel : ViewModelBase
       Arguments = Arguments,
       PythonInterpreterPath = PythonInterpreterPath,
       Enabled = Enabled,
-      StartWithAres = StartWithAres
+      StartWithAres = StartWithAres,
+      AutoRestart = AutoRestart
     };
   }
 }
