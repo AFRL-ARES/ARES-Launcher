@@ -40,6 +40,7 @@ public class PyAresManager : IPyAresManager
   private readonly BehaviorSubject<bool> _anyRunningSubject = new(false);
   private readonly BehaviorSubject<IReadOnlyList<PyAresComponentStatus>> _statusSubject = new(new List<PyAresComponentStatus>());
   private readonly Dictionary<string, CancellationTokenSource> _componentTokens = new();
+  private readonly Dictionary<string, Task> _componentTasks = new();
   private readonly Dictionary<string, BehaviorSubject<string>> _outputSubjects = new();
 
   public PyAresManager(IAppConfigurationService configurationService, ILogger<PyAresManager> logger)
@@ -105,6 +106,8 @@ public class PyAresManager : IPyAresManager
     }
 
     _componentTokens.Clear();
+    _componentTasks.Clear();
+
     var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
     foreach(var status in statuses)
     {
@@ -133,6 +136,25 @@ public class PyAresManager : IPyAresManager
       {
         _logger.LogWarning(ex, "Failed to cancel PyAres component {Name} during restart", name);
       }
+    }
+
+    if(_componentTasks.TryGetValue(name, out var existingTask))
+    {
+      try
+      {
+        var timeout = Task.Delay(TimeSpan.FromSeconds(3));
+        var completed = await Task.WhenAny(existingTask, timeout);
+        if(completed != existingTask)
+        {
+          _logger.LogWarning("Timeout waiting for PyAres component {Name} to stop during restart.", name);
+        }
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Error while waiting for PyAres component {Name} to stop during restart.", name);
+      }
+
+      _componentTasks.Remove(name);
     }
 
     var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
@@ -194,6 +216,7 @@ public class PyAresManager : IPyAresManager
       .WithStandardErrorPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)));
 
     var task = command.ExecuteAsync(cts.Token).Task;
+    _componentTasks[component.Name] = task;
 
     task.ContinueWith(t =>
     {
@@ -210,6 +233,7 @@ public class PyAresManager : IPyAresManager
       }
 
       _componentTokens.Remove(component.Name);
+      _componentTasks.Remove(component.Name);
       _anyRunningSubject.OnNext(_componentTokens.Count > 0);
       _statusSubject.OnNext((_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList());
     }, TaskScheduler.Default);

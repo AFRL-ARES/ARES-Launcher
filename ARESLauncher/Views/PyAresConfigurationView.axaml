@@ -60,22 +60,22 @@
                     <TextBox Text="{Binding SelectedComponent.Description, Mode=TwoWay}" TextWrapping="Wrap"/>
 
                     <TextBlock Text="Working directory" FontSize="12"/>
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBox Width="260" Text="{Binding SelectedComponent.WorkingDirectory, Mode=TwoWay}"/>
-                        <Button Content="Browse" Command="{Binding BrowseWorkingDirectoryCommand}"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,0">
+                        <TextBox Grid.Column="0" Margin="0,0,4,0" Text="{Binding SelectedComponent.WorkingDirectory, Mode=TwoWay}"/>
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseWorkingDirectoryCommand}"/>
+                    </Grid>
 
                     <TextBlock Text="Python interpreter" FontSize="12"/>
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBox Width="260" Text="{Binding SelectedComponent.PythonInterpreterPath, Mode=TwoWay}"/>
-                        <Button Content="Browse" Command="{Binding BrowsePythonInterpreterCommand}"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,0">
+                        <TextBox Grid.Column="0" Margin="0,0,4,0" Text="{Binding SelectedComponent.PythonInterpreterPath, Mode=TwoWay}"/>
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowsePythonInterpreterCommand}"/>
+                    </Grid>
 
                     <TextBlock Text="Entry point (script/module)" FontSize="12"/>
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBox Width="260" Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
-                        <Button Content="Browse" Command="{Binding BrowseEntryPointCommand}"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,0">
+                        <TextBox Grid.Column="0" Margin="0,0,4,0" Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseEntryPointCommand}"/>
+                    </Grid>
 
                     <TextBlock Text="Arguments" FontSize="12"/>
                     <TextBox Text="{Binding SelectedComponent.Arguments, Mode=TwoWay}"/>
@@ -110,7 +110,6 @@
                     <Button Content="New" Command="{Binding NewComponentCommand}"/>
                     <Button Content="Add" Command="{Binding AddComponentCommand}"/>
                     <Button Content="Remove" Command="{Binding RemoveSelectedComponentCommand}"/>
-                    <Button Content="Reset" Command="{Binding ResetCommand}"/>
                     <Button Content="Save" Command="{Binding SaveCommand}"/>
                 </StackPanel>
             </Grid>
