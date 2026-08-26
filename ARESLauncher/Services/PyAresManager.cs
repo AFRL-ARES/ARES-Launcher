@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using ARESLauncher.Configuration;
 using ARESLauncher.Services.Configuration;
 using CliWrap;
-using CliWrap.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace ARESLauncher.Services;
@@ -19,6 +21,29 @@ public class PyAresComponentStatus
   public string Name { get; set; } = "";
   public bool IsRunning { get; set; }
   public string? LastError { get; set; }
+}
+
+public class PyAresProcessInfo
+{
+  public string Name { get; set; } = "";
+  public int Pid { get; set; }
+  public string WorkingDirectory { get; set; } = "";
+  public string EntryPoint { get; set; } = "";
+  public bool IsAlive { get; set; }
+}
+
+public class PyAresRuntimeEntry
+{
+  public string Name { get; set; } = "";
+  public int Pid { get; set; }
+  public string WorkingDirectory { get; set; } = "";
+  public string EntryPoint { get; set; } = "";
+}
+
+public class PyAresRuntimeState
+{
+  public DateTime LastUpdated { get; set; }
+  public List<PyAresRuntimeEntry> Components { get; set; } = new();
 }
 
 public interface IPyAresManager
@@ -31,6 +56,10 @@ public interface IPyAresManager
   Task StartAll();
   Task StopAll();
   Task RestartComponent(string name);
+
+  Task<IReadOnlyList<PyAresProcessInfo>> GetOrphanedProcessesAsync();
+  Task StopOrphanedProcessesAsync();
+  Task AttachExistingProcessesAsync();
 }
 
 public class PyAresManager : IPyAresManager
@@ -42,6 +71,8 @@ public class PyAresManager : IPyAresManager
   private readonly Dictionary<string, CancellationTokenSource> _componentTokens = new();
   private readonly Dictionary<string, Task> _componentTasks = new();
   private readonly Dictionary<string, BehaviorSubject<string>> _outputSubjects = new();
+  private readonly Dictionary<string, int> _attachedProcesses = new();
+  private readonly string _runtimeStatePath;
 
   public PyAresManager(IAppConfigurationService configurationService, ILogger<PyAresManager> logger)
   {
@@ -49,6 +80,9 @@ public class PyAresManager : IPyAresManager
     _logger = logger;
     AnyPyAresRunning = _anyRunningSubject.AsObservable();
     ComponentStatuses = _statusSubject.AsObservable();
+
+    var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+    _runtimeStatePath = Path.Combine(appData, "ARESLauncher", "PyAresRuntime.json");
   }
 
   public IObservable<bool> AnyPyAresRunning { get; }
@@ -107,6 +141,9 @@ public class PyAresManager : IPyAresManager
 
     _componentTokens.Clear();
     _componentTasks.Clear();
+    _attachedProcesses.Clear();
+
+    UpdateRuntimeState(state => state.Components.Clear());
 
     var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
     foreach(var status in statuses)
@@ -124,6 +161,25 @@ public class PyAresManager : IPyAresManager
     {
       _logger.LogWarning("Requested restart for PyAres component {Name}, but no configuration was found.", name);
       return;
+    }
+
+    if(_attachedProcesses.TryGetValue(name, out var attachedPid))
+    {
+      try
+      {
+        var proc = Process.GetProcessById(attachedPid);
+        if(!proc.HasExited)
+        {
+          proc.Kill();
+        }
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Failed to kill attached PyAres process {Name}", name);
+      }
+
+      _attachedProcesses.Remove(name);
+      RemoveRuntimeEntry(name);
     }
 
     if(_componentTokens.TryGetValue(name, out var existingCts))
@@ -180,6 +236,127 @@ public class PyAresManager : IPyAresManager
     }
   }
 
+  public Task<IReadOnlyList<PyAresProcessInfo>> GetOrphanedProcessesAsync()
+  {
+    var state = LoadRuntimeState();
+    var infos = new List<PyAresProcessInfo>();
+
+    foreach(var entry in state.Components)
+    {
+      var info = new PyAresProcessInfo
+      {
+        Name = entry.Name,
+        Pid = entry.Pid,
+        WorkingDirectory = entry.WorkingDirectory,
+        EntryPoint = entry.EntryPoint,
+        IsAlive = false
+      };
+
+      try
+      {
+        var proc = Process.GetProcessById(entry.Pid);
+        info.IsAlive = !proc.HasExited;
+      }
+      catch(ArgumentException)
+      {
+        info.IsAlive = false;
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Error checking PyAres process {Pid}", entry.Pid);
+        info.IsAlive = false;
+      }
+
+      if(info.IsAlive)
+      {
+        infos.Add(info);
+      }
+    }
+
+    return Task.FromResult<IReadOnlyList<PyAresProcessInfo>>(infos);
+  }
+
+  public async Task StopOrphanedProcessesAsync()
+  {
+    var state = LoadRuntimeState();
+
+    foreach(var entry in state.Components.ToArray())
+    {
+      try
+      {
+        var proc = Process.GetProcessById(entry.Pid);
+        if(!proc.HasExited)
+        {
+          proc.Kill();
+        }
+      }
+      catch(ArgumentException)
+      {
+        // Process already exited
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Failed to kill orphaned PyAres process {Name}", entry.Name);
+      }
+    }
+
+    UpdateRuntimeState(s => s.Components.Clear());
+
+    // Reflect that nothing is running anymore
+    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
+    foreach(var status in statuses)
+    {
+      status.IsRunning = false;
+    }
+    _statusSubject.OnNext(statuses);
+    _anyRunningSubject.OnNext(false);
+
+    await Task.CompletedTask;
+  }
+
+  public Task AttachExistingProcessesAsync()
+  {
+    var state = LoadRuntimeState();
+    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
+
+    foreach(var entry in state.Components)
+    {
+      try
+      {
+        var proc = Process.GetProcessById(entry.Pid);
+        if(proc.HasExited)
+        {
+          continue;
+        }
+
+        _attachedProcesses[entry.Name] = entry.Pid;
+
+        var status = statuses.FirstOrDefault(s => s.Name == entry.Name);
+        if(status is null)
+        {
+          status = new PyAresComponentStatus { Name = entry.Name };
+          statuses.Add(status);
+        }
+
+        status.IsRunning = true;
+        status.LastError = null;
+      }
+      catch(ArgumentException)
+      {
+        // Process no longer exists; ignore
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Error attaching to existing PyAres process {Name}", entry.Name);
+      }
+    }
+
+    _statusSubject.OnNext(statuses);
+    _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
+
+    return Task.CompletedTask;
+  }
+
   private async Task StartComponentInternal(PyAresComponentConfig component, PyAresComponentStatus status)
   {
     var interpreter = string.IsNullOrWhiteSpace(component.PythonInterpreterPath) ? "python" : component.PythonInterpreterPath;
@@ -215,8 +392,24 @@ public class PyAresManager : IPyAresManager
       .WithStandardOutputPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)))
       .WithStandardErrorPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)));
 
-    var task = command.ExecuteAsync(cts.Token).Task;
+    var commandTask = command.ExecuteAsync(cts.Token);
+    var task = commandTask.Task;
     _componentTasks[component.Name] = task;
+
+    // Persist runtime state with the new process id
+    UpdateRuntimeState(state =>
+    {
+      var entry = state.Components.FirstOrDefault(c => c.Name == component.Name);
+      if(entry is null)
+      {
+        entry = new PyAresRuntimeEntry { Name = component.Name };
+        state.Components.Add(entry);
+      }
+
+      entry.Pid = commandTask.ProcessId;
+      entry.WorkingDirectory = workingDir;
+      entry.EntryPoint = component.EntryPoint ?? string.Empty;
+    });
 
     task.ContinueWith(t =>
     {
@@ -234,6 +427,8 @@ public class PyAresManager : IPyAresManager
 
       _componentTokens.Remove(component.Name);
       _componentTasks.Remove(component.Name);
+      RemoveRuntimeEntry(component.Name);
+
       _anyRunningSubject.OnNext(_componentTokens.Count > 0);
       _statusSubject.OnNext((_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList());
     }, TaskScheduler.Default);
@@ -282,5 +477,75 @@ public class PyAresManager : IPyAresManager
       args.Add(component.Arguments);
     }
     return string.Join(" ", args);
+  }
+
+  private PyAresRuntimeState LoadRuntimeState()
+  {
+    try
+    {
+      if(File.Exists(_runtimeStatePath))
+      {
+        var json = File.ReadAllText(_runtimeStatePath);
+        var state = JsonSerializer.Deserialize<PyAresRuntimeState>(json);
+        if(state is not null)
+        {
+          return state;
+        }
+      }
+    }
+    catch(Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to load PyAres runtime state from {Path}", _runtimeStatePath);
+    }
+
+    return new PyAresRuntimeState
+    {
+      LastUpdated = DateTime.UtcNow,
+      Components = new List<PyAresRuntimeEntry>()
+    };
+  }
+
+  private void SaveRuntimeState(PyAresRuntimeState state)
+  {
+    try
+    {
+      state.LastUpdated = DateTime.UtcNow;
+      var directory = Path.GetDirectoryName(_runtimeStatePath);
+      if(!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+      {
+        Directory.CreateDirectory(directory);
+      }
+
+      var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
+      {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+      });
+
+      File.WriteAllText(_runtimeStatePath, json);
+    }
+    catch(Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to save PyAres runtime state to {Path}", _runtimeStatePath);
+    }
+  }
+
+  private void UpdateRuntimeState(Action<PyAresRuntimeState> update)
+  {
+    var state = LoadRuntimeState();
+    update(state);
+    SaveRuntimeState(state);
+  }
+
+  private void RemoveRuntimeEntry(string name) 
+  {
+    UpdateRuntimeState(state =>
+    {
+      var entry = state.Components.FirstOrDefault(c => c.Name == name);
+      if(entry is not null)
+      {
+        state.Components.Remove(entry);
+      }
+    });
   }
 }

@@ -7,6 +7,7 @@ using NuGet.Versioning;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -90,6 +91,7 @@ public partial class MainViewModel : ViewModelBase
     OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
     UpdateConfirmationDialog = new Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse>();
     ConflictDialog = new Interaction<Unit, Unit>();
+    PyAresOrphansDialog = new Interaction<IReadOnlyList<PyAresProcessInfo>, bool>();
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
       ConflictsResolved = false;
@@ -99,6 +101,17 @@ public partial class MainViewModel : ViewModelBase
       if(!conflict)
       {
         ConflictsResolved = true;
+
+      // After resolving ARES conflicts, handle any orphaned PyAres processes
+      var orphaned = await _pyAresManager.GetOrphanedProcessesAsync();
+      if(orphaned.Count > 0)
+      {
+        var stopAll = await PyAresOrphansDialog.Handle(orphaned);
+        if(stopAll)
+          await _pyAresManager.StopOrphanedProcessesAsync();
+        else
+          await _pyAresManager.AttachExistingProcessesAsync();
+      }
         return;
       }
 
@@ -393,6 +406,8 @@ public partial class MainViewModel : ViewModelBase
   public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
 
   public Interaction<Unit, Unit> ConflictDialog { get; }
+
+  public Interaction<IReadOnlyList<PyAresProcessInfo>, bool> PyAresOrphansDialog { get; }
   public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; }
   public bool ShowProgressBar => _showProgressBar.Value;
 
