@@ -22,6 +22,7 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   private readonly IAppConfigurationService _configurationService;
   private readonly IPyAresManager _pyAresManager;
   private IDisposable? _outputSubscription;
+  private IReadOnlyList<PyAresComponentStatus> _latestStatuses = Array.Empty<PyAresComponentStatus>();
 
   public PyAresConfigurationViewModel(IAppConfigurationService configurationService, IPyAresManager pyAresManager)
   {
@@ -99,6 +100,12 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     }
 
     SelectedComponent = Components.FirstOrDefault();
+
+    // Reapply latest status information so icons remain accurate after reload
+    if(_latestStatuses is not null && _latestStatuses.Count > 0)
+    {
+      UpdateStatuses(_latestStatuses);
+    }
   }
 
   private void AddComponent()
@@ -157,9 +164,11 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
 
   private void UpdateStatuses(IReadOnlyList<PyAresComponentStatus> statuses)
   {
+    _latestStatuses = statuses ?? Array.Empty<PyAresComponentStatus>();
+
     foreach(var vm in Components)
     {
-      var status = statuses.FirstOrDefault(s => s.Name == vm.Name);
+      var status = _latestStatuses.FirstOrDefault(s => s.Name == vm.Name);
       vm.IsRunning = status?.IsRunning ?? false;
     }
   }

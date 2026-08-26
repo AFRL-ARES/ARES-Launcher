@@ -28,6 +28,7 @@ public class PyAresManager : IPyAresManager
   private readonly Dictionary<string, BehaviorSubject<string>> _outputSubjects = new();
   private readonly Dictionary<string, int> _attachedProcesses = new();
   private readonly object _runtimeStateLock = new();
+  private bool _autoRestartEnabled = true;
   private readonly string _runtimeStatePath;
 
   public PyAresManager(IAppConfigurationService configurationService, ILogger<PyAresManager> logger)
@@ -54,6 +55,7 @@ public class PyAresManager : IPyAresManager
 
   public async Task StartAll()
   {
+    _autoRestartEnabled = true;
     var components = _configurationService.Current.PyAresComponents?.Where(c => c.Enabled && c.StartWithAres).ToArray() ?? Array.Empty<PyAresComponentConfig>();
     var statuses = new List<PyAresComponentStatus>();
 
@@ -80,6 +82,7 @@ public class PyAresManager : IPyAresManager
 
   public async Task StopAll()
   {
+    _autoRestartEnabled = false;
     var tokens = _componentTokens.Values.ToArray();
     foreach(var cts in tokens)
     {
@@ -365,36 +368,70 @@ public class PyAresManager : IPyAresManager
     });
 
     task.ContinueWith(t =>
+
     {
+
       var autoRestart = false;
+      var latestConfig = _configurationService.Current.PyAresComponents?.FirstOrDefault(c => c.Name == component.Name);
+      var shouldAutoRestart = _autoRestartEnabled && ((latestConfig?.AutoRestart ?? component.AutoRestart));
+
+
 
       if(t.IsFaulted)
+
       {
+
         status.IsRunning = false;
         status.LastError = t.Exception?.Message;
         _logger.LogError(t.Exception, "PyAres component {Name} faulted", component.Name);
+
+        if(shouldAutoRestart)
+        {
+          autoRestart = true;
+        }
+
       }
+
       else if(!t.IsCanceled)
+
       {
+
         status.IsRunning = false;
         _logger.LogInformation("PyAres component {Name} completed", component.Name);
+
+        if(shouldAutoRestart)
+        {
+          autoRestart = true;
+        }
+
       }
+
+      // If t.IsCanceled, we assume intentional stop and do not auto-restart here.
 
       _componentTokens.Remove(component.Name);
       _componentTasks.Remove(component.Name);
       RemoveRuntimeEntry(component.Name);
 
-      if(component.AutoRestart)
+
+
+      if(autoRestart)
+
       {
+
         // Start a fresh instance; let the new call update status/subjects
+        var nextConfig = latestConfig ?? component;
         _logger.LogInformation("PyAres component {Name} exited; auto-restarting", component.Name);
 
-        _ = StartComponentInternal(component, status);
+        _ = StartComponentInternal(nextConfig, status);
         return;
+
       }
+
+
 
       _anyRunningSubject.OnNext(_componentTokens.Count > 0);
       _statusSubject.OnNext((_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList());
+
     }, TaskScheduler.Default);
 
     status.IsRunning = true;
