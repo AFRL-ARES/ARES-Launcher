@@ -40,7 +40,7 @@
                 <Grid RowDefinitions="50,*,Auto">
                     <!-- Top Logo -->
                     <areslauncher:AresLogo Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" Height="180"
-                                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,-75,5,5" />
+                                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5,-45,5,5" />
 
                     <!-- Main Content -->
                     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" VerticalAlignment="Top"
