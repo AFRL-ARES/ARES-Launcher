@@ -360,66 +360,45 @@ public class PyAresManager : IPyAresManager
     });
 
     task.ContinueWith(t =>
-
     {
-
       var autoRestart = false;
       var latestConfig = _configurationService.Current.PyAresComponents?.FirstOrDefault(c => c.Name == component.Name);
       var shouldAutoRestart = _autoRestartEnabled && ((latestConfig?.AutoRestart ?? component.AutoRestart));
 
-
-
       if(t.IsFaulted)
-
       {
-
         status.IsRunning = false;
         status.LastError = t.Exception?.Message;
         _logger.LogError(t.Exception, "PyAres component {Name} faulted", component.Name);
 
         if(shouldAutoRestart)
-        {
           autoRestart = true;
-        }
-
       }
 
       else if(!t.IsCanceled)
-
       {
-
         status.IsRunning = false;
         _logger.LogInformation("PyAres component {Name} completed", component.Name);
 
         if(shouldAutoRestart)
-        {
           autoRestart = true;
-        }
 
       }
 
       // If t.IsCanceled, we assume intentional stop and do not auto-restart here.
-
       _componentTokens.Remove(component.Name);
       _componentTasks.Remove(component.Name);
       RemoveRuntimeEntry(component.Name);
 
-
-
       if(autoRestart)
-
       {
-
         // Start a fresh instance; let the new call update status/subjects
         var nextConfig = latestConfig ?? component;
         _logger.LogInformation("PyAres component {Name} exited; auto-restarting", component.Name);
 
         _ = StartComponentInternal(nextConfig, status);
         return;
-
       }
-
-
 
       _anyRunningSubject.OnNext(_componentTokens.Count > 0);
       _statusSubject.OnNext((_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList());
@@ -428,10 +407,12 @@ public class PyAresManager : IPyAresManager
 
     status.IsRunning = true;
     status.LastError = null;
+
     var currentStatuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
     var existing = currentStatuses.FirstOrDefault(s => s.Name == status.Name);
     if(existing is null)
       currentStatuses.Add(status);
+
     _statusSubject.OnNext(currentStatuses);
     _anyRunningSubject.OnNext(true);
 
