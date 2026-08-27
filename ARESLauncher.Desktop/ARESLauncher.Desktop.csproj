@@ -15,7 +15,7 @@
   </PropertyGroup>
     
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
   </ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
