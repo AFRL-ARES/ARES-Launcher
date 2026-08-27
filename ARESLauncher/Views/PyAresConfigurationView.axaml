@@ -62,19 +62,19 @@
                     <TextBlock Text="Working directory" FontSize="12"/>
                     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,0">
                         <TextBox Grid.Column="0" Margin="0,0,4,0" Text="{Binding SelectedComponent.WorkingDirectory, Mode=TwoWay}"/>
-                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseWorkingDirectoryCommand}"/>
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseWorkingDirectoryCommand}" CommandParameter="{Binding $parent[TopLevel].StorageProvider}"/>
                     </Grid>
 
                     <TextBlock Text="Python interpreter" FontSize="12"/>
                     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,0">
                         <TextBox Grid.Column="0" Margin="0,0,4,0" Text="{Binding SelectedComponent.PythonInterpreterPath, Mode=TwoWay}"/>
-                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowsePythonInterpreterCommand}"/>
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowsePythonInterpreterCommand}" CommandParameter="{Binding $parent[TopLevel].StorageProvider}"/>
                     </Grid>
 
                     <TextBlock Text="Entry point (script/module)" FontSize="12"/>
                     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,0">
                         <TextBox Grid.Column="0" Margin="0,0,4,0" Text="{Binding SelectedComponent.EntryPoint, Mode=TwoWay}"/>
-                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseEntryPointCommand}"/>
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseEntryPointCommand}" CommandParameter="{Binding $parent[TopLevel].StorageProvider}"/>
                     </Grid>
 
                     <TextBlock Text="Arguments" FontSize="12"/>

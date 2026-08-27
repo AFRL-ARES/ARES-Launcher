@@ -18,6 +18,22 @@ public partial class PyAresComponentEditorViewModel : ViewModelBase
     AutoRestart = config.AutoRestart;
   }
 
+  public PyAresComponentConfig ToConfig()
+  {
+    return new PyAresComponentConfig
+    {
+      Name = Name,
+      Description = Description,
+      WorkingDirectory = WorkingDirectory,
+      EntryPoint = EntryPoint,
+      Arguments = Arguments,
+      PythonInterpreterPath = PythonInterpreterPath,
+      Enabled = Enabled,
+      StartWithAres = StartWithAres,
+      AutoRestart = AutoRestart
+    };
+  }
+
   [Reactive]
   public partial string Name { get; set; }
 
@@ -47,21 +63,5 @@ public partial class PyAresComponentEditorViewModel : ViewModelBase
 
   [Reactive]
   public partial bool IsRunning { get; set; }
-
-  public PyAresComponentConfig ToConfig()
-  {
-    return new PyAresComponentConfig
-    {
-      Name = Name,
-      Description = Description,
-      WorkingDirectory = WorkingDirectory,
-      EntryPoint = EntryPoint,
-      Arguments = Arguments,
-      PythonInterpreterPath = PythonInterpreterPath,
-      Enabled = Enabled,
-      StartWithAres = StartWithAres,
-      AutoRestart = AutoRestart
-    };
-  }
 }
 

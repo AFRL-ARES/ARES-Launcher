@@ -60,84 +60,82 @@ public partial class MainWindow : Window
       interaction.SetOutput(result ?? UpdateConfirmationResponse.Cancel);
     });
 
-    HandlePyAresOrphans(vm);
-  }
-
-
-  private async void HandlePyAresOrphans(MainViewModel vm)
-  {
-    var orphans = await vm.GetOrphanedPyAresProcessesAsync();
-    if(orphans.Count == 0)
-      return;
-
-    var dialog = new Window
+    vm.PyAresOrphansDialog.RegisterHandler(async interaction =>
     {
-      Title = "PyAres Services Running",
-      Width = 420,
-      Height = 260,
-      WindowStartupLocation = WindowStartupLocation.CenterOwner
-    };
-
-    var header = new TextBlock
-    {
-      Text = $"We found {orphans.Count} existing PyAres service(s) running.",
-      Margin = new Thickness(0, 0, 0, 8),
-      TextWrapping = Avalonia.Media.TextWrapping.Wrap
-    };
-
-    var listPanel = new StackPanel { Orientation = Orientation.Vertical };
-    foreach(var info in orphans)
-    {
-      listPanel.Children.Add(new TextBlock
+      var orphans = interaction.Input;
+      if(orphans is null || orphans.Count == 0)
       {
-        Text = $"• {info.Name} (PID {info.Pid}, {info.EntryPoint})",
-        FontSize = 12
-      });
-    }
+        interaction.SetOutput(false);
+        return;
+      }
 
-    var stopButton = new Button
-    {
-      Content = "Stop All PyAres Services",
-      Margin = new Thickness(0, 8, 8, 0)
-    };
+      var dialog = new Window
+      {
+        Title = "PyAres Services Running",
+        Width = 420,
+        Height = 260,
+        WindowStartupLocation = WindowStartupLocation.CenterOwner
+      };
 
-    var keepButton = new Button
-    {
-      Content = "Keep Services Running",
-      Margin = new Thickness(0, 8, 0, 0)
-    };
+      var header = new TextBlock
+      {
+        Text = $"We found {orphans.Count} existing PyAres service(s) running.",
+        Margin = new Thickness(0, 0, 0, 8),
+        TextWrapping = Avalonia.Media.TextWrapping.Wrap
+      };
 
-    var buttonPanel = new StackPanel
-    {
-      Orientation = Orientation.Horizontal,
-      HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
-    };
-    buttonPanel.Children.Add(stopButton);
-    buttonPanel.Children.Add(keepButton);
+      var listPanel = new StackPanel { Orientation = Orientation.Vertical };
+      foreach(var info in orphans)
+      {
+        listPanel.Children.Add(new TextBlock
+        {
+          Text = $"• {info.Name} (PID {info.Pid}, {info.EntryPoint})",
+          FontSize = 12
+        });
+      }
 
-    var root = new StackPanel
-    {
-      Margin = new Thickness(16),
-      Orientation = Orientation.Vertical
-    };
-    root.Children.Add(header);
-    root.Children.Add(listPanel);
-    root.Children.Add(buttonPanel);
+      var stopButton = new Button
+      {
+        Content = "Stop All PyAres Services",
+        Margin = new Thickness(0, 8, 8, 0)
+      };
 
-    dialog.Content = root;
+      var keepButton = new Button
+      {
+        Content = "Keep Services Running",
+        Margin = new Thickness(0, 8, 0, 0)
+      };
 
-    var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
-    stopButton.Click += (_, _) => { tcs.TrySetResult(true); dialog.Close(); };
-    keepButton.Click += (_, _) => { tcs.TrySetResult(false); dialog.Close(); };
+      var buttonPanel = new StackPanel
+      {
+        Orientation = Orientation.Horizontal,
+        HorizontalAlignment = HorizontalAlignment.Right
+      };
+      buttonPanel.Children.Add(stopButton);
+      buttonPanel.Children.Add(keepButton);
 
-    dialog.Show();
-    var stopAll = await tcs.Task;
+      var root = new StackPanel
+      {
+        Margin = new Thickness(16),
+        Orientation = Orientation.Vertical
+      };
+      root.Children.Add(header);
+      root.Children.Add(listPanel);
+      root.Children.Add(buttonPanel);
 
-    if(stopAll)
-      await vm.StopOrphanedPyAresProcessesAsync();
-    else
-      await vm.AttachExistingPyAresProcessesAsync();
+      dialog.Content = root;
+
+      var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+      stopButton.Click += (_, _) => { tcs.TrySetResult(true); dialog.Close(); };
+      keepButton.Click += (_, _) => { tcs.TrySetResult(false); dialog.Close(); };
+
+      dialog.Show();
+      var stopAll = await tcs.Task;
+
+      interaction.SetOutput(stopAll);
+    });
   }
+
   protected override void OnClosing(WindowClosingEventArgs e)
   {
     if(Application.Current is App app && app.IsShuttingDown)

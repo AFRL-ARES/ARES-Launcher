@@ -353,8 +353,3 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     return !string.IsNullOrWhiteSpace(repo.Owner) && !string.IsNullOrWhiteSpace(repo.Repo);
   }
 }
-
-
-
-
-

@@ -23,11 +23,9 @@ public class LauncherConfiguration
   public string AresDataPath { get; set; } = Path.Combine(_appPath, "Data");
   public string SqliteDatabasePath { get; set; } = Path.Combine(_appPath, "Data", "ares_database.db");
 
-  public string SqlServerConnectionString { get; set; } =
-    "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=ARES;Integrated Security=True;Pooling=False;";
+  public string SqlServerConnectionString { get; set; } = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=ARES;Integrated Security=True;Pooling=False;";
 
-  public string PostgresConnectionString { get; set; } =
-    "Host=localhost;Database=ARES;Username=postgres;Password=postgres";
+  public string PostgresConnectionString { get; set; } = "Host=localhost;Database=ARES;Username=postgres;Password=postgres";
 
   [JsonConverter(typeof(JsonStringEnumConverter))]
   public DatabaseProvider DatabaseProvider { get; set; } = DatabaseProvider.Sqlite;
@@ -45,20 +43,3 @@ public class LauncherConfiguration
 
   public PyAresComponentConfig[] PyAresComponents { get; set; } = Array.Empty<PyAresComponentConfig>();
 }
-
-
-
-public class PyAresComponentConfig
-{
-  public string Name { get; set; } = "";
-  public string Description { get; set; } = "";
-  public string WorkingDirectory { get; set; } = "";
-  public string EntryPoint { get; set; } = ""; // script path or module name
-  public string Arguments { get; set; } = "";
-  public string PythonInterpreterPath { get; set; } = "";
-  public bool Enabled { get; set; } = true;
-  public bool StartWithAres { get; set; } = true;
-  public bool AutoRestart { get; set; } = false;
-}
-
-

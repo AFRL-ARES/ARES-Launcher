@@ -14,6 +14,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using System.Threading.Tasks;
 using ARESLauncher.Models.PyAres;
+using Avalonia.Platform.Storage;
 
 namespace ARESLauncher.ViewModels;
 
@@ -61,31 +62,13 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
       this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
     SaveCommand = ReactiveCommand.Create(SaveConfiguration);
     ResetCommand = ReactiveCommand.Create(LoadFromConfiguration);
-    BrowseWorkingDirectoryCommand = ReactiveCommand.CreateFromTask(BrowseWorkingDirectory);
-    BrowsePythonInterpreterCommand = ReactiveCommand.CreateFromTask(BrowsePythonInterpreter);
-    BrowseEntryPointCommand = ReactiveCommand.CreateFromTask(BrowseEntryPoint);
+    BrowseWorkingDirectoryCommand = ReactiveCommand.CreateFromTask<IStorageProvider>(BrowseWorkingDirectory);
+    BrowsePythonInterpreterCommand = ReactiveCommand.CreateFromTask<IStorageProvider>(BrowsePythonInterpreter);
+    BrowseEntryPointCommand = ReactiveCommand.CreateFromTask<IStorageProvider>(BrowseEntryPoint);
     RestartSelectedComponentCommand = ReactiveCommand.CreateFromTask(
       RestartSelectedComponent,
       this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
   }
-
-  public ObservableCollection<PyAresComponentEditorViewModel> Components { get; }
-
-  [Reactive]
-  public partial PyAresComponentEditorViewModel? SelectedComponent { get; set; }
-
-  [Reactive]
-  public partial string SelectedOutput { get; set; }
-
-  public ReactiveCommand<Unit, Unit> AddComponentCommand { get; }
-  public ReactiveCommand<Unit, Unit> NewComponentCommand { get; }
-  public ReactiveCommand<Unit, Unit> RemoveSelectedComponentCommand { get; }
-  public ReactiveCommand<Unit, Unit> SaveCommand { get; }
-  public ReactiveCommand<Unit, Unit> ResetCommand { get; }
-  public ReactiveCommand<Unit, Unit> BrowseWorkingDirectoryCommand { get; }
-  public ReactiveCommand<Unit, Unit> BrowsePythonInterpreterCommand { get; }
-  public ReactiveCommand<Unit, Unit> BrowseEntryPointCommand { get; }
-  public ReactiveCommand<Unit, Unit> RestartSelectedComponentCommand { get; }
 
   private void LoadFromConfiguration()
   {
@@ -173,68 +156,53 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     }
   }
 
-  private async Task BrowseWorkingDirectory()
+  private async Task BrowseWorkingDirectory(IStorageProvider storageProvider)
   {
     if(SelectedComponent is null)
       return;
 
-    if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-       && desktop.MainWindow is Window window)
-    {
-      var dialog = new OpenFolderDialog();
-      var result = await dialog.ShowAsync(window);
-      if(!string.IsNullOrWhiteSpace(result))
-      {
-        SelectedComponent.WorkingDirectory = result;
-      }
-    }
+    var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Select Working Directory", AllowMultiple = false });
+    var folder = result.FirstOrDefault();
+    var localPath = folder?.TryGetLocalPath();
+
+    if(localPath is not null)
+      SelectedComponent.WorkingDirectory = localPath;
   }
 
-  private async Task BrowsePythonInterpreter()
+  private async Task BrowsePythonInterpreter(IStorageProvider storageProvider)
   {
     if(SelectedComponent is null)
       return;
 
-    if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-       && desktop.MainWindow is Window window)
-    {
-      var dialog = new OpenFileDialog
-      {
-        AllowMultiple = false,
-        Title = "Select Python Interpreter"
-      };
-      var result = await dialog.ShowAsync(window);
-      var path = result?.FirstOrDefault();
-      if(!string.IsNullOrWhiteSpace(path))
-      {
-        SelectedComponent.PythonInterpreterPath = path;
-      }
-    }
+    IStorageFolder? startFolder = null;
+
+    if(!string.IsNullOrWhiteSpace(SelectedComponent.WorkingDirectory))
+      startFolder = await storageProvider.TryGetFolderFromPathAsync(SelectedComponent.WorkingDirectory);
+
+    var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Select Python Interpreter", AllowMultiple = false, SuggestedStartLocation = startFolder });
+
+    var file = files.FirstOrDefault();
+
+    if(file is not null)
+      SelectedComponent.PythonInterpreterPath = file.TryGetLocalPath() ?? "";
   }
 
-  private async Task BrowseEntryPoint()
+  private async Task BrowseEntryPoint(IStorageProvider storageProvider)
   {
-    if(SelectedComponent is null)
+    if(SelectedComponent is null || !storageProvider.CanOpen)
       return;
 
-    if(Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-       && desktop.MainWindow is Window window)
-    {
-      var dialog = new OpenFileDialog
-      {
-        AllowMultiple = false,
-        Title = "Select Entry Script",
-        Directory = string.IsNullOrWhiteSpace(SelectedComponent.WorkingDirectory)
-          ? null
-          : SelectedComponent.WorkingDirectory
-      };
-      var result = await dialog.ShowAsync(window);
-      var path = result?.FirstOrDefault();
-      if(!string.IsNullOrWhiteSpace(path))
-      {
-        SelectedComponent.EntryPoint = System.IO.Path.GetFileName(path);
-      }
-    }
+    IStorageFolder? startFolder = null;
+
+    if(!string.IsNullOrWhiteSpace(SelectedComponent.WorkingDirectory))
+      startFolder = await storageProvider.TryGetFolderFromPathAsync(SelectedComponent.WorkingDirectory);
+
+    var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Select Entry Script", AllowMultiple = false, SuggestedStartLocation = startFolder });
+
+    var file = files.FirstOrDefault();
+
+    if(file is not null)
+      SelectedComponent.EntryPoint = file.Name;
   }
 
   private async Task RestartSelectedComponent()
@@ -244,4 +212,22 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
 
     await _pyAresManager.RestartComponent(SelectedComponent.Name);
   }
+
+  public ObservableCollection<PyAresComponentEditorViewModel> Components { get; }
+
+  [Reactive]
+  public partial PyAresComponentEditorViewModel? SelectedComponent { get; set; }
+
+  [Reactive]
+  public partial string SelectedOutput { get; set; }
+
+  public ReactiveCommand<Unit, Unit> AddComponentCommand { get; }
+  public ReactiveCommand<Unit, Unit> NewComponentCommand { get; }
+  public ReactiveCommand<Unit, Unit> RemoveSelectedComponentCommand { get; }
+  public ReactiveCommand<Unit, Unit> SaveCommand { get; }
+  public ReactiveCommand<Unit, Unit> ResetCommand { get; }
+  public ReactiveCommand<IStorageProvider, Unit> BrowseWorkingDirectoryCommand { get; }
+  public ReactiveCommand<IStorageProvider, Unit> BrowsePythonInterpreterCommand { get; }
+  public ReactiveCommand<IStorageProvider, Unit> BrowseEntryPointCommand { get; }
+  public ReactiveCommand<Unit, Unit> RestartSelectedComponentCommand { get; }
 }

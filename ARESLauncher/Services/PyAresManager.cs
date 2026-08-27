@@ -359,7 +359,7 @@ public class PyAresManager : IPyAresManager
       entry.EntryPoint = component.EntryPoint ?? string.Empty;
     });
 
-    task.ContinueWith(t =>
+    _ = task.ContinueWith(t =>
     {
       var autoRestart = false;
       var latestConfig = _configurationService.Current.PyAresComponents?.FirstOrDefault(c => c.Name == component.Name);

@@ -33,8 +33,6 @@ public partial class MainViewModel : ViewModelBase
   private readonly IConflictManager _conflictManager;
   private readonly IPyAresManager _pyAresManager;
   private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
-
-  public PyAresConfigurationViewModel PyAresConfig { get; }
   private readonly IDatabaseManager _databaseManager;
   private readonly ObservableAsPropertyHelper<bool> _launcherReady;
   private readonly ObservableAsPropertyHelper<double> _progress;
@@ -270,7 +268,7 @@ public partial class MainViewModel : ViewModelBase
       .WhenAnyValue(vm => vm.AresState)
       .Select(s => s switch
       {
-        AresState.Unknown => "Launcher in a weird state, not sure why",
+        AresState.Unknown => "The ARES Launcher is in an unknown state, a fresh install is recommended",
         AresState.OneRunning => "One component is currently running. You can either stop the current one, or start the other",
         AresState.BothRunning => "ARES is running",
         AresState.Ready => "ARES is ready",
@@ -304,78 +302,6 @@ public partial class MainViewModel : ViewModelBase
     RefreshCommand.Execute();
   }
 
-  private bool IsLatestAresVersion(string version)
-    => AvailableAresVersions.FirstOrDefault()?.Version.ToNormalizedString() == InstalledAresVersion;
-  
-  [Reactive]
-  public partial bool AresConditionChecked { get; private set; }
-
-  [Reactive]
-  public partial bool ConflictsResolved { get; private set; }
-
-  [Reactive]
-  public partial bool ButtonEnabled { get; private set; }
-
-  [Reactive]
-  public partial bool LauncherUpdateInProgress { get; private set; }
-
-  [Reactive]
-  public partial bool ProcessOwnerConflict { get; private set; }
-
-  public AresState AresState => _aresState.Value;
-
-  public IReactiveCommand? ButtonCommand => _buttonCommand.Value;
-
-  public string ButtonText => _buttonText.Value;
-
-  public IReactiveCommand? AuxButtonCommand => _auxButtonCommand.Value;
-
-  public object? AuxButtonContent => _auxButtonContent.Value;
-
-  public bool LauncherReady => _launcherReady.Value;
-
-  public ConfigurationOverviewViewModel Overview { get; }
-  public ConfigurationEditorViewModel Editor { get; }
-
-  [Reactive]
-  public partial string? Error { get; private set; }
-
-  public bool ShowDisclaimer => _showDisclaimer.Value;
-
-  public string? UpdateStepDescription => _updateStepDescription.Value;
-
-  public UpdateStep CurrentUpdateStep => _currentUpdateStep.Value;
-
-  public double Progress => _progress.Value;
-
-  [Reactive]
-  public partial bool AresPresent { get; private set; }
-
-  [Reactive]
-  public partial DatabaseStatus DatabaseStatus { get; private set; }
-
-  [Reactive]
-  public partial string InstalledAresVersion { get; private set; }
-
-  [Reactive]
-  public partial string AvailableAresUpdateVersion { get; private set; }
-
-  public string AresStateDescription => _aresStateDescription.Value;
-
-  public int AresComponentsRunning => _aresComponentsRunning.Value;
-
-  public bool UpdateInProgress => _updateInProgress.Value;
-
-  public bool UpdateAvailable => _updateAvailable.Value; 
-
-  public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
-
-   public AresRelease[] AvailableAresVersions { get; set; }
-
-   // Release notes for the currently selected/target ARES version (first available update).
-   public string? SelectedReleaseNotes =>
-     AvailableAresVersions?.FirstOrDefault()?.ReleaseNotes;
-
   private async Task UpdateAvailableVersions()
   {
     await _aresBinaryManager.Refresh();
@@ -384,33 +310,6 @@ public partial class MainViewModel : ViewModelBase
     AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
     AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
   }
-
-  [Reactive]
-  public partial SemanticVersion[]? AvailableLauncherVersions { get; private set; }
-
-  public ReactiveCommand<Unit, Unit> StartAresCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> StopAresCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> UpdateDatabaseCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> UpdateAresCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> OpenLauncherReleasePageCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
-
-  public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
-
-  public Interaction<Unit, Unit> ConflictDialog { get; }
-
-  public Interaction<IReadOnlyList<PyAresProcessInfo>, bool> PyAresOrphansDialog { get; }
-  public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; }
-  public bool ShowProgressBar => _showProgressBar.Value;
 
   public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
   {
@@ -453,10 +352,10 @@ public partial class MainViewModel : ViewModelBase
     var currentVersion = _aresBinaryManager.CurrentVersion;
     AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
     var latest = AvailableAresVersions.FirstOrDefault();
-    
+
     if(latest is null)
       return;
-    
+
     var targetVersion = latest.Version;
 
     if(RequiresUpdateConfirmation(currentVersion, targetVersion))
@@ -552,7 +451,7 @@ public partial class MainViewModel : ViewModelBase
     Overview.Refresh();
     _ = CheckAresCondition();
   }
-  
+
   // Check if we should ask for confirmation. We should ask if there's a major/minor update
   // Or if it's a downgrade
   private static bool RequiresUpdateConfirmation(SemanticVersion? currentVersion, SemanticVersion? targetVersion)
@@ -574,31 +473,100 @@ public partial class MainViewModel : ViewModelBase
 
     return targetVersion.Major == currentVersion.Major && targetVersion.Minor > currentVersion.Minor;
   }
+
+  [Reactive]
+  public partial bool AresConditionChecked { get; private set; }
+
+  [Reactive]
+  public partial bool ConflictsResolved { get; private set; }
+
+  [Reactive]
+  public partial bool ButtonEnabled { get; private set; }
+
+  [Reactive]
+  public partial bool LauncherUpdateInProgress { get; private set; }
+
+  [Reactive]
+  public partial bool ProcessOwnerConflict { get; private set; }
+
+  public AresState AresState => _aresState.Value;
+
+  public IReactiveCommand? ButtonCommand => _buttonCommand.Value;
+
+  public string ButtonText => _buttonText.Value;
+
+  public IReactiveCommand? AuxButtonCommand => _auxButtonCommand.Value;
+
+  public object? AuxButtonContent => _auxButtonContent.Value;
+
+  public bool LauncherReady => _launcherReady.Value;
+
+  public ConfigurationOverviewViewModel Overview { get; }
+  public ConfigurationEditorViewModel Editor { get; }
+
+  [Reactive]
+  public partial string? Error { get; private set; }
+
+  public bool ShowDisclaimer => _showDisclaimer.Value;
+
+  public string? UpdateStepDescription => _updateStepDescription.Value;
+
+  public UpdateStep CurrentUpdateStep => _currentUpdateStep.Value;
+
+  public double Progress => _progress.Value;
+
+  [Reactive]
+  public partial bool AresPresent { get; private set; }
+
+  [Reactive]
+  public partial DatabaseStatus DatabaseStatus { get; private set; }
+
+  [Reactive]
+  public partial string InstalledAresVersion { get; private set; }
+
+  [Reactive]
+  public partial string AvailableAresUpdateVersion { get; private set; }
+
+  public string AresStateDescription => _aresStateDescription.Value;
+
+  public int AresComponentsRunning => _aresComponentsRunning.Value;
+
+  public bool UpdateInProgress => _updateInProgress.Value;
+
+  public bool UpdateAvailable => _updateAvailable.Value; 
+
+  public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
+
+  public AresRelease[] AvailableAresVersions { get; set; }
+
+  [Reactive]
+  public partial SemanticVersion[]? AvailableLauncherVersions { get; private set; }
+
+  public ReactiveCommand<Unit, Unit> StartAresCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> StopAresCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> UpdateDatabaseCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> UpdateAresCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> OpenLauncherReleasePageCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
+
+  public Interaction<Unit, Unit> ConflictDialog { get; }
+
+  public Interaction<IReadOnlyList<PyAresProcessInfo>, bool> PyAresOrphansDialog { get; }
+
+  public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; }
+
+  public bool ShowProgressBar => _showProgressBar.Value;
+
+  public PyAresConfigurationViewModel PyAresConfig { get; }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
