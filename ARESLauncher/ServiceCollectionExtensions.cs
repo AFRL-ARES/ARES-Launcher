@@ -35,4 +35,3 @@ public static class ServiceCollectionExtensions
     collection.AddTransient<MainViewModel>();
   }
 }
-
