@@ -42,9 +42,7 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
         SelectedOutput = string.Empty;
 
         if(string.IsNullOrWhiteSpace(componentName))
-        {
           return;
-        }
 
         _outputSubscription = _pyAresManager
           .GetOutput(componentName)
@@ -71,21 +69,15 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   {
     Components.Clear();
     var current = _configurationService.Current;
+
     if(current.PyAresComponents is not null)
-    {
       foreach(var cfg in current.PyAresComponents)
-      {
         Components.Add(new PyAresComponentEditorViewModel(cfg));
-      }
-    }
 
     SelectedComponent = Components.FirstOrDefault();
 
-    // Reapply latest status information so icons remain accurate after reload
     if(_latestStatuses is not null && _latestStatuses.Count > 0)
-    {
       UpdateStatuses(_latestStatuses);
-    }
   }
 
   private void AddComponent()
@@ -125,9 +117,7 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
 
     var idx = Components.IndexOf(SelectedComponent);
     if(idx >= 0)
-    {
       Components.RemoveAt(idx);
-    }
 
     SelectedComponent = Components.FirstOrDefault();
   }
@@ -245,9 +235,5 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   public ReactiveCommand<IStorageProvider, Unit> BrowseEntryPointCommand { get; }
   public ReactiveCommand<Unit, Unit> RestartSelectedComponentCommand { get; }
   public ReactiveCommand<Unit, Unit> StartSelectedComponentCommand { get; }
-
   public ReactiveCommand<Unit, Unit> StopSelectedComponentCommand { get; }
 }
-
-
-

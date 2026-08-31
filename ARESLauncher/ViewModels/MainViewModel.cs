@@ -54,7 +54,8 @@ public partial class MainViewModel : ViewModelBase
     IDatabaseManager databaseManager,
     IBrowserOpener browserOpener,
     IConflictManager conflictManager,
-    IPyAresManager pyAresManager, PyAresConfigurationViewModel pyAresConfigurationViewModel)
+    IPyAresManager pyAresManager, 
+    PyAresConfigurationViewModel pyAresConfigurationViewModel)
   {
     AvailableAresVersions = [];
     Overview = overview ?? throw new ArgumentNullException(nameof(overview));
