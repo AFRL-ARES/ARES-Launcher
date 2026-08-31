@@ -271,8 +271,6 @@
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Spacing="8">
-                <Button Content="Reset"
-                        Command="{Binding ResetConfigurationCommand}" />
                 <Button Content="Save"
                         Command="{Binding SaveConfigurationCommand}" />
             </StackPanel>
