@@ -1,4 +1,4 @@
-﻿using ARESLauncher.Models.PyAres;
+using ARESLauncher.Models.PyAres;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -16,7 +16,11 @@ public interface IPyAresManager
   Task StopAll();
   Task RestartComponent(string name);
 
+  Task StopComponent(string name);
+  Task StartComponent(string name);
+
   Task<IReadOnlyList<PyAresProcessInfo>> GetOrphanedProcessesAsync();
   Task StopOrphanedProcessesAsync();
   Task AttachExistingProcessesAsync();
 }
+

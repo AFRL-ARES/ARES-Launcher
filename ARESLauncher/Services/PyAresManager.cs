@@ -1,5 +1,12 @@
+using ARESLauncher.Configuration;
+using ARESLauncher.Models.PyAres;
+using ARESLauncher.Services.Configuration;
+using CliWrap;
+using Microsoft.Extensions.Logging;
+using Octokit;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -9,11 +16,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using ARESLauncher.Configuration;
-using ARESLauncher.Models.PyAres;
-using ARESLauncher.Services.Configuration;
-using CliWrap;
-using Microsoft.Extensions.Logging;
 
 namespace ARESLauncher.Services;
 
@@ -30,6 +32,7 @@ public class PyAresManager : IPyAresManager
   private readonly object _runtimeStateLock = new();
   private bool _autoRestartEnabled = true;
   private readonly string _runtimeStatePath;
+  private List<PyAresComponentStatus> _statuses = new List<PyAresComponentStatus>();
 
   public PyAresManager(IAppConfigurationService configurationService, ILogger<PyAresManager> logger)
   {
@@ -57,12 +60,12 @@ public class PyAresManager : IPyAresManager
   {
     _autoRestartEnabled = true;
     var components = _configurationService.Current.PyAresComponents?.Where(c => c.Enabled && c.StartWithAres).ToArray() ?? Array.Empty<PyAresComponentConfig>();
-    var statuses = new List<PyAresComponentStatus>();
+    _statuses = new List<PyAresComponentStatus>();
 
     foreach(var component in components)
     {
       var status = new PyAresComponentStatus { Name = component.Name };
-      statuses.Add(status);
+      _statuses.Add(status);
 
       try
       {
@@ -76,8 +79,8 @@ public class PyAresManager : IPyAresManager
       }
     }
 
-    _statusSubject.OnNext(statuses);
-    _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
+    _statusSubject.OnNext(_statuses);
+    _anyRunningSubject.OnNext(_statuses.Any(s => s.IsRunning));
   }
 
   public async Task StopAll()
@@ -270,7 +273,6 @@ public class PyAresManager : IPyAresManager
   public Task AttachExistingProcessesAsync()
   {
     var state = LoadRuntimeState();
-    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
 
     foreach(var entry in state.Components)
     {
@@ -283,11 +285,11 @@ public class PyAresManager : IPyAresManager
 
         _attachedProcesses[entry.Name] = entry.Pid;
 
-        var status = statuses.FirstOrDefault(s => s.Name == entry.Name);
+        var status = _statuses.FirstOrDefault(s => s.Name == entry.Name);
         if(status is null)
         {
           status = new PyAresComponentStatus { Name = entry.Name };
-          statuses.Add(status);
+          _statuses.Add(status);
         }
 
         status.IsRunning = true;
@@ -303,8 +305,8 @@ public class PyAresManager : IPyAresManager
       }
     }
 
-    _statusSubject.OnNext(statuses);
-    _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
+    _statusSubject.OnNext(_statuses);
+    _anyRunningSubject.OnNext(_statuses.Any(s => s.IsRunning));
 
     return Task.CompletedTask;
   }
@@ -453,6 +455,87 @@ public class PyAresManager : IPyAresManager
     return string.Join(" ", args);
   }
 
+  public async Task StartComponent(string name)
+  {
+    var component = _configurationService.Current.PyAresComponents?.FirstOrDefault(c => c.Name == name);
+    if(component is null)
+      return;
+
+    var status = new PyAresComponentStatus { Name = name };
+    _statuses.Add(status);
+    _statusSubject.OnNext(_statuses);
+
+    await StartComponentInternal(component, status);
+  }
+
+  public async Task StopComponent(string name)
+  {
+    if(_attachedProcesses.TryGetValue(name, out var attachedPid))
+    {
+      try
+      {
+        var proc = Process.GetProcessById(attachedPid);
+        if(!proc.HasExited)
+        {
+          proc.Kill();
+        }
+      }
+      catch(ArgumentException)
+      {
+        // Process already exited
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Failed to kill attached PyAres process {Name}", name);
+      }
+
+      _attachedProcesses.Remove(name);
+      RemoveRuntimeEntry(name);
+    }
+
+    if(_componentTokens.TryGetValue(name, out var existingCts))
+    {
+      try
+      {
+        await existingCts.CancelAsync();
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Failed to cancel PyAres component {Name} during stop", name);
+      }
+    }
+
+    if(_componentTasks.TryGetValue(name, out var existingTask))
+    {
+      try
+      {
+        var timeout = Task.Delay(TimeSpan.FromSeconds(3));
+        var completed = await Task.WhenAny(existingTask, timeout);
+        if(completed != existingTask)
+        {
+          _logger.LogWarning("Timeout waiting for PyAres component {Name} to stop.", name);
+        }
+      }
+      catch(Exception ex)
+      {
+        _logger.LogWarning(ex, "Error while waiting for PyAres component {Name} to stop.", name);
+      }
+    }
+
+    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
+    var status = statuses.FirstOrDefault(s => s.Name == name);
+    if(status is null)
+    {
+      status = new PyAresComponentStatus { Name = name };
+      statuses.Add(status);
+    }
+
+    status.IsRunning = false;
+    status.LastError = null;
+
+    _statusSubject.OnNext(statuses);
+    _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
+  }
   private PyAresRuntimeState LoadRuntimeState()
   {
     try
@@ -529,3 +612,6 @@ public class PyAresManager : IPyAresManager
   public IObservable<bool> AnyPyAresRunning { get; }
   public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
 }
+
+
+

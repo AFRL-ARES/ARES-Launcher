@@ -9,9 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using System.Threading.Tasks;
 using ARESLauncher.Models.PyAres;
 using Avalonia.Platform.Storage;
@@ -65,9 +62,9 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     BrowseWorkingDirectoryCommand = ReactiveCommand.CreateFromTask<IStorageProvider>(BrowseWorkingDirectory);
     BrowsePythonInterpreterCommand = ReactiveCommand.CreateFromTask<IStorageProvider>(BrowsePythonInterpreter);
     BrowseEntryPointCommand = ReactiveCommand.CreateFromTask<IStorageProvider>(BrowseEntryPoint);
-    RestartSelectedComponentCommand = ReactiveCommand.CreateFromTask(
-      RestartSelectedComponent,
-      this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
+    RestartSelectedComponentCommand = ReactiveCommand.CreateFromTask(RestartSelectedComponent, this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
+    StopSelectedComponentCommand = ReactiveCommand.CreateFromTask(StopSelectedComponent, this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
+    StartSelectedComponentCommand = ReactiveCommand.CreateFromTask(StartSelectedComponent, this.WhenAnyValue(vm => vm.SelectedComponent).Select(c => c is not null));
   }
 
   private void LoadFromConfiguration()
@@ -213,6 +210,22 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
     await _pyAresManager.RestartComponent(SelectedComponent.Name);
   }
 
+  private async Task StopSelectedComponent()
+  {
+    if(SelectedComponent is null)
+      return;
+
+    await _pyAresManager.StopComponent(SelectedComponent.Name);
+  }
+
+  private async Task StartSelectedComponent()
+  {
+    if(SelectedComponent is null)
+      return;
+
+    await _pyAresManager.StartComponent(SelectedComponent.Name);
+  }
+
   public ObservableCollection<PyAresComponentEditorViewModel> Components { get; }
 
   [Reactive]
@@ -230,4 +243,10 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
   public ReactiveCommand<IStorageProvider, Unit> BrowsePythonInterpreterCommand { get; }
   public ReactiveCommand<IStorageProvider, Unit> BrowseEntryPointCommand { get; }
   public ReactiveCommand<Unit, Unit> RestartSelectedComponentCommand { get; }
+  public ReactiveCommand<Unit, Unit> StartSelectedComponentCommand { get; }
+
+  public ReactiveCommand<Unit, Unit> StopSelectedComponentCommand { get; }
 }
+
+
+

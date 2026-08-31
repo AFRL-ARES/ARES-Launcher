@@ -103,6 +103,8 @@
                         <CheckBox IsChecked="{Binding SelectedComponent.Enabled, Mode=TwoWay}" Content="Enabled"/>
                         <CheckBox IsChecked="{Binding SelectedComponent.StartWithAres, Mode=TwoWay}" Content="Start with ARES"/>
                         <CheckBox IsChecked="{Binding SelectedComponent.AutoRestart, Mode=TwoWay}" Content="Auto restart on exit"/>
+                        <Button Content="Start" Command="{Binding StartSelectedComponentCommand}"/>
+                        <Button Content="Stop" Command="{Binding StopSelectedComponentCommand}"/>
                         <Button Content="Restart" Command="{Binding RestartSelectedComponentCommand}"/>
                     </StackPanel>
                 </StackPanel>
