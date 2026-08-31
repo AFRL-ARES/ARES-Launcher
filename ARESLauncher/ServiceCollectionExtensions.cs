@@ -10,7 +10,6 @@ public static class ServiceCollectionExtensions
 {
   public static void AddCommonServices(this ServiceCollection collection)
   {
-
     collection.AddLogging(b =>
     {
       var logger = new LoggerConfiguration().WriteTo.File("ares-launcher.log", rollingInterval: RollingInterval.Day).CreateLogger();
