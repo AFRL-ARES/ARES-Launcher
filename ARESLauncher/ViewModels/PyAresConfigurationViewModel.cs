@@ -216,6 +216,7 @@ public partial class PyAresConfigurationViewModel : ViewModelBase
       return;
 
     await _pyAresManager.StopComponent(SelectedComponent.Name);
+    SelectedOutput = string.Empty;
   }
 
   private async Task StartSelectedComponent()

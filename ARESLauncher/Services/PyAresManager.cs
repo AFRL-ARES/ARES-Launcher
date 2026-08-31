@@ -3,10 +3,8 @@ using ARESLauncher.Models.PyAres;
 using ARESLauncher.Services.Configuration;
 using CliWrap;
 using Microsoft.Extensions.Logging;
-using Octokit;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -93,8 +91,10 @@ public class PyAresManager : IPyAresManager
       {
         await cts.CancelAsync();
       }
-      catch(Exception)
+      catch(Exception ex)
       {
+        _logger.LogWarning("Error Encountered Stopping PyAres Components!");
+        _logger.LogError(ex.Message);
       }
     }
 
@@ -106,9 +106,8 @@ public class PyAresManager : IPyAresManager
 
     var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
     foreach(var status in statuses)
-    {
       status.IsRunning = false;
-    }
+    
     _statusSubject.OnNext(statuses);
     _anyRunningSubject.OnNext(false);
   }
@@ -127,10 +126,9 @@ public class PyAresManager : IPyAresManager
       try
       {
         var proc = Process.GetProcessById(attachedPid);
+        
         if(!proc.HasExited)
-        {
           proc.Kill();
-        }
       }
       catch(Exception ex)
       {
@@ -159,10 +157,9 @@ public class PyAresManager : IPyAresManager
       {
         var timeout = Task.Delay(TimeSpan.FromSeconds(3));
         var completed = await Task.WhenAny(existingTask, timeout);
+        
         if(completed != existingTask)
-        {
           _logger.LogWarning("Timeout waiting for PyAres component {Name} to stop during restart.", name);
-        }
       }
       catch(Exception ex)
       {
@@ -242,10 +239,10 @@ public class PyAresManager : IPyAresManager
       try
       {
         var proc = Process.GetProcessById(entry.Pid);
+        
         if(!proc.HasExited)
-        {
           proc.Kill();
-        }
+        
       }
       catch(ArgumentException)
       {
@@ -261,6 +258,7 @@ public class PyAresManager : IPyAresManager
 
     // Reflect that nothing is running anymore
     var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
+
     foreach(var status in statuses)
       status.IsRunning = false;
 
@@ -412,6 +410,7 @@ public class PyAresManager : IPyAresManager
 
     var currentStatuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
     var existing = currentStatuses.FirstOrDefault(s => s.Name == status.Name);
+
     if(existing is null)
       currentStatuses.Add(status);
 
@@ -445,13 +444,11 @@ public class PyAresManager : IPyAresManager
     args.Add("-u");
 
     if(!string.IsNullOrWhiteSpace(component.EntryPoint))
-    {
       args.Add(component.EntryPoint);
-    }
+    
     if(!string.IsNullOrWhiteSpace(component.Arguments))
-    {
       args.Add(component.Arguments);
-    }
+
     return string.Join(" ", args);
   }
 
@@ -475,10 +472,9 @@ public class PyAresManager : IPyAresManager
       try
       {
         var proc = Process.GetProcessById(attachedPid);
+        
         if(!proc.HasExited)
-        {
           proc.Kill();
-        }
       }
       catch(ArgumentException)
       {
@@ -511,10 +507,9 @@ public class PyAresManager : IPyAresManager
       {
         var timeout = Task.Delay(TimeSpan.FromSeconds(3));
         var completed = await Task.WhenAny(existingTask, timeout);
+
         if(completed != existingTask)
-        {
           _logger.LogWarning("Timeout waiting for PyAres component {Name} to stop.", name);
-        }
       }
       catch(Exception ex)
       {
@@ -536,6 +531,7 @@ public class PyAresManager : IPyAresManager
     _statusSubject.OnNext(statuses);
     _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
   }
+
   private PyAresRuntimeState LoadRuntimeState()
   {
     try
@@ -544,10 +540,9 @@ public class PyAresManager : IPyAresManager
       {
         var json = File.ReadAllText(_runtimeStatePath);
         var state = JsonSerializer.Deserialize<PyAresRuntimeState>(json);
+
         if(state is not null)
-        {
           return state;
-        }
       }
     }
     catch(Exception ex)
@@ -570,10 +565,9 @@ public class PyAresManager : IPyAresManager
       {
         state.LastUpdated = DateTime.UtcNow;
         var directory = Path.GetDirectoryName(_runtimeStatePath);
+
         if(!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-        {
           Directory.CreateDirectory(directory);
-        }
 
         var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
         {
@@ -612,6 +606,3 @@ public class PyAresManager : IPyAresManager
   public IObservable<bool> AnyPyAresRunning { get; }
   public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
 }
-
-
-
