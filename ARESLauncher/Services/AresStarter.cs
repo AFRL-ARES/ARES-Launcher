@@ -9,13 +9,22 @@ using ARESLauncher.Models;
 using CliWrap;
 using CliWrap.Exceptions;
 using Microsoft.Extensions.Logging;
+using ARESLauncher.Services.Configuration;
 
 namespace ARESLauncher.Services;
 
 public class AresStarter : IAresStarter
 {
+  private static readonly string[] DemoServiceExecutableNames =
+  [
+    "DemoRemoteAnalyzer",
+    "DemoRemoteDevice",
+    "DemoRemotePlanner"
+  ];
+
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IExecutableGetter _executableGetter;
+  private readonly IAppConfigurationService _configurationService;
   private readonly IDatabaseManager _databaseManager;
   private readonly ILogger<AresStarter> _logger;
   private readonly BehaviorSubject<bool> _aresUiRunningSubject = new(false);
@@ -23,14 +32,21 @@ public class AresStarter : IAresStarter
 
   private Task _uiTask = Task.CompletedTask;
   private Task _serviceTask = Task.CompletedTask;
+  private Task[] _demoServiceTasks = [];
 
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
 
-  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, IDatabaseManager databaseManager, ILogger<AresStarter> logger)
+  public AresStarter(
+    IAresBinaryManager aresBinaryManager,
+    IExecutableGetter executableGetter,
+    IAppConfigurationService configurationService,
+    IDatabaseManager databaseManager,
+    ILogger<AresStarter> logger)
   {
     _aresBinaryManager = aresBinaryManager;
     _executableGetter = executableGetter;
+    _configurationService = configurationService;
     _databaseManager = databaseManager;
     _logger = logger;
     AresUiRunning = _aresUiRunningSubject.AsObservable();
@@ -48,8 +64,9 @@ public class AresStarter : IAresStarter
       return;
     }
 
+    var demoMode = _configurationService.Current.DemoMode;
     var currentVersion = _aresBinaryManager.CurrentVersion;
-    if(currentVersion is not null)
+    if(!demoMode && currentVersion is not null)
     {
       try
       {
@@ -63,23 +80,21 @@ public class AresStarter : IAresStarter
 
     _cancellationTokenSource = new CancellationTokenSource();
     _stopInitiated = 0;
+    _demoServiceTasks = [];
+
+    if(demoMode)
+    {
+      _demoServiceTasks = StartDemoServices(_cancellationTokenSource.Token);
+    }
 
     if(!_aresUiRunningSubject.Value)
     {
-      var uiTask = StartUi(_cancellationTokenSource.Token);
-      if(uiTask is null)
-      {
-        _uiTask = Task.CompletedTask;
-      }
+      _uiTask = StartUi(_cancellationTokenSource.Token, demoMode) ?? Task.CompletedTask;
     }
 
     if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService && !_aresServiceRunningSubject.Value)
     {
-      var serviceTask = StartService(_cancellationTokenSource.Token);
-      if(serviceTask is null)
-      {
-        _serviceTask = Task.CompletedTask;
-      }
+      _serviceTask = StartService(_cancellationTokenSource.Token) ?? Task.CompletedTask;
     }
   }
 
@@ -88,7 +103,7 @@ public class AresStarter : IAresStarter
     await _cancellationTokenSource.CancelAsync();
     try
     {
-      await Task.WhenAll(_serviceTask, _uiTask);
+      await Task.WhenAll([_serviceTask, _uiTask, .. _demoServiceTasks]);
     }
     catch(OperationCanceledException)
     {
@@ -154,7 +169,7 @@ public class AresStarter : IAresStarter
     return serviceTask;
   }
 
-  private Task? StartUi(CancellationToken cancellationToken)
+  private Task? StartUi(CancellationToken cancellationToken, bool demoMode)
   {
     var uiExecutable = _executableGetter.GetUiExecutablePath();
     if(uiExecutable is null)
@@ -172,14 +187,53 @@ public class AresStarter : IAresStarter
 
     var uiDir = Path.GetDirectoryName(uiExecutable) ?? "";
 
-    var uiTask = Cli.Wrap(uiExecutable)
-      .WithWorkingDirectory(uiDir)
-      .ExecuteAsync(cancellationToken)
-      .Task;
+    var command = Cli.Wrap(uiExecutable)
+      .WithWorkingDirectory(uiDir);
+
+    if(demoMode)
+    {
+      command = command.WithArguments("--demo");
+    }
+
+    var uiTask = command.ExecuteAsync(cancellationToken).Task;
 
     ProcessUiTask(uiTask);
 
     return uiTask;
+  }
+
+  private Task[] StartDemoServices(CancellationToken cancellationToken)
+  {
+    var tasks = new Task[DemoServiceExecutableNames.Length];
+    for(var i = 0; i < DemoServiceExecutableNames.Length; i++)
+    {
+      var serviceName = DemoServiceExecutableNames[i];
+      var executablePath = _executableGetter.GetDemoServiceExecutablePath(serviceName);
+      if(executablePath is null || !File.Exists(executablePath))
+      {
+        _logger.LogError("Demo service executable is not present: {ExecutablePath}", executablePath);
+        tasks[i] = Task.CompletedTask;
+        continue;
+      }
+
+      var workingDirectory = Path.GetDirectoryName(executablePath);
+      if(string.IsNullOrEmpty(workingDirectory))
+      {
+        _logger.LogError("Couldn't resolve the working directory for demo service {ServiceName}.", serviceName);
+        tasks[i] = Task.CompletedTask;
+        continue;
+      }
+
+      var demoServiceTask = Cli.Wrap(executablePath)
+        .WithWorkingDirectory(workingDirectory)
+        .ExecuteAsync(cancellationToken)
+        .Task;
+
+      ProcessDemoServiceTask(demoServiceTask, serviceName);
+      tasks[i] = demoServiceTask;
+    }
+
+    return tasks;
   }
 
   private void ProcessUiTask(Task ui)
@@ -222,6 +276,23 @@ public class AresStarter : IAresStarter
     }, TaskScheduler.Default);
 
     _aresServiceRunningSubject.OnNext(true);
+  }
+
+  private void ProcessDemoServiceTask(Task demoService, string executableName)
+  {
+    demoService.ContinueWith(t =>
+    {
+      if(t.IsFaulted)
+      {
+        _logger.LogError(t.Exception, "Demo service {ExecutableName} task faulted; stopping ARES.", executableName);
+        TriggerStopOnce();
+      }
+      else if(!t.IsCanceled)
+      {
+        _logger.LogInformation("Demo service {ExecutableName} task completed; stopping ARES.", executableName);
+        TriggerStopOnce();
+      }
+    }, TaskScheduler.Default);
   }
 
   private void TriggerStopOnce()

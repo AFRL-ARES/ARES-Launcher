@@ -22,6 +22,15 @@ public class ExecutableGetter(IAppConfigurationService _configurationService) : 
     return GetPath(_configurationService.Current.ServiceBinaryPath, "AresService");
   }
 
+  public string? GetDemoServiceExecutablePath(string serviceName)
+  {
+    if(string.IsNullOrWhiteSpace(serviceName))
+      return null;
+
+    var demoServicePath = Path.Combine(_configurationService.Current.UiBinaryPath, "demo", serviceName);
+    return GetPath(demoServicePath, serviceName);
+  }
+
   private string? GetPath(string dataPath, string name)
   {
     if (string.IsNullOrEmpty(dataPath))

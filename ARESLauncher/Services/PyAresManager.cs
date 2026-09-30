@@ -1,10 +1,10 @@
 using ARESLauncher.Configuration;
 using ARESLauncher.Models.PyAres;
 using ARESLauncher.Services.Configuration;
-using CliWrap;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -85,17 +85,35 @@ public class PyAresManager : IPyAresManager
   {
     _autoRestartEnabled = false;
     var tokens = _componentTokens.Values.ToArray();
+    var componentTasks = _componentTasks.Values.ToArray();
+
     foreach(var cts in tokens)
     {
       try
       {
         await cts.CancelAsync();
       }
+      catch(OperationCanceledException)
+      {
+        // The command task is expected to observe cancellation while stopping.
+      }
       catch(Exception ex)
       {
-        _logger.LogWarning("Error Encountered Stopping PyAres Components!");
-        _logger.LogError(ex.Message);
+        _logger.LogWarning(ex, "Failed to request shutdown for a PyAres component.");
       }
+    }
+
+    try
+    {
+      await Task.WhenAll(componentTasks);
+    }
+    catch(OperationCanceledException)
+    {
+      // Cancellation is the normal completion path for launcher-managed components.
+    }
+    catch(Exception ex)
+    {
+      _logger.LogWarning(ex, "A PyAres component faulted while stopping.");
     }
 
     _componentTokens.Clear();
@@ -334,14 +352,9 @@ public class PyAresManager : IPyAresManager
       outputSubject.OnNext(string.Empty);
     }
 
-    var command = Cli.Wrap(interpreter)
-      .WithWorkingDirectory(workingDir)
-      .WithArguments(BuildArguments(component))
-      .WithStandardOutputPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)))
-      .WithStandardErrorPipe(PipeTarget.ToDelegate(line => AppendOutput(component.Name, line)));
-
-    var commandTask = command.ExecuteAsync(cts.Token);
-    var task = commandTask.Task;
+    var startedProcess = StartPythonProcess(interpreter, workingDir, component, cts.Token);
+    var task = startedProcess.Task;
+    var processId = startedProcess.ProcessId;
     _componentTasks[component.Name] = task;
 
     // Persist runtime state with the new process id
@@ -354,7 +367,7 @@ public class PyAresManager : IPyAresManager
         state.Components.Add(entry);
       }
 
-      entry.Pid = commandTask.ProcessId;
+      entry.Pid = processId;
       entry.WorkingDirectory = workingDir;
       entry.EntryPoint = component.EntryPoint ?? string.Empty;
     });
@@ -365,17 +378,18 @@ public class PyAresManager : IPyAresManager
       var latestConfig = _configurationService.Current.PyAresComponents?.FirstOrDefault(c => c.Name == component.Name);
       var shouldAutoRestart = _autoRestartEnabled && ((latestConfig?.AutoRestart ?? component.AutoRestart));
 
+      var intentionallyStopped = cts.IsCancellationRequested;
       if(t.IsFaulted)
       {
         status.IsRunning = false;
         status.LastError = t.Exception?.Message;
         _logger.LogError(t.Exception, "PyAres component {Name} faulted", component.Name);
 
-        if(shouldAutoRestart)
+        if(!intentionallyStopped && shouldAutoRestart)
           autoRestart = true;
       }
 
-      else if(!t.IsCanceled)
+      else if(!intentionallyStopped)
       {
         status.IsRunning = false;
         _logger.LogInformation("PyAres component {Name} completed", component.Name);
@@ -384,11 +398,19 @@ public class PyAresManager : IPyAresManager
           autoRestart = true;
 
       }
+      else
+      {
+        status.IsRunning = false;
+        status.LastError = null;
+      }
 
-      // If t.IsCanceled, we assume intentional stop and do not auto-restart here.
-      _componentTokens.Remove(component.Name);
-      _componentTasks.Remove(component.Name);
-      RemoveRuntimeEntry(component.Name);
+      if(_componentTokens.TryGetValue(component.Name, out var currentCts) && ReferenceEquals(currentCts, cts))
+        _componentTokens.Remove(component.Name);
+
+      if(_componentTasks.TryGetValue(component.Name, out var currentTask) && ReferenceEquals(currentTask, task))
+        _componentTasks.Remove(component.Name);
+
+      RemoveRuntimeEntry(component.Name, processId);
 
       if(autoRestart)
       {
@@ -418,6 +440,152 @@ public class PyAresManager : IPyAresManager
     _anyRunningSubject.OnNext(true);
 
     await Task.CompletedTask;
+  }
+
+  private StartedPythonProcess StartPythonProcess(
+    string interpreter,
+    string workingDirectory,
+    PyAresComponentConfig component,
+    CancellationToken cancellationToken)
+  {
+    var process = new Process
+    {
+      StartInfo = new ProcessStartInfo
+      {
+        FileName = interpreter,
+        Arguments = BuildArguments(component),
+        WorkingDirectory = workingDirectory,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      }
+    };
+
+    process.OutputDataReceived += (_, eventArgs) =>
+    {
+      if(eventArgs.Data is not null)
+        AppendOutput(component.Name, eventArgs.Data);
+    };
+    process.ErrorDataReceived += (_, eventArgs) =>
+    {
+      if(eventArgs.Data is not null)
+        AppendOutput(component.Name, eventArgs.Data);
+    };
+
+    try
+    {
+      if(!process.Start())
+        throw new InvalidOperationException($"Failed to start PyAres component {component.Name}.");
+
+      var processId = process.Id;
+      process.BeginOutputReadLine();
+      process.BeginErrorReadLine();
+
+      return new StartedPythonProcess(
+        processId,
+        WaitForExitAndTerminateOnCancellationAsync(process, cancellationToken));
+    }
+    catch
+    {
+      TerminateProcess(process);
+      process.Dispose();
+      throw;
+    }
+  }
+
+  private static async Task WaitForExitAndTerminateOnCancellationAsync(Process process, CancellationToken cancellationToken)
+  {
+    var cancellationRegistration = cancellationToken.Register(() => TerminateProcess(process));
+    try
+    {
+      await process.WaitForExitAsync();
+      process.WaitForExit();
+    }
+    finally
+    {
+      cancellationRegistration.Dispose();
+      process.Dispose();
+    }
+  }
+
+  private static void TerminateProcess(Process process)
+  {
+    try
+    {
+      if(OperatingSystem.IsWindows())
+      {
+        if(TryStartWindowsProcessTreeTermination(process.Id))
+          return;
+
+        process.Kill();
+        return;
+      }
+
+      process.Kill(entireProcessTree: true);
+    }
+    catch(InvalidOperationException)
+    {
+      // The process exited before the cancellation callback reached it.
+    }
+    catch(Win32Exception)
+    {
+      // Windows released the process handle while termination was in progress.
+    }
+  }
+
+  private static bool TryStartWindowsProcessTreeTermination(int processId)
+  {
+    try
+    {
+      var systemDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System);
+      var executablePath = string.IsNullOrEmpty(systemDirectory) ? "taskkill.exe" : Path.Combine(systemDirectory, "taskkill.exe");
+      var startInfo = new ProcessStartInfo
+      {
+        FileName = executablePath,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      };
+
+      startInfo.ArgumentList.Add("/PID");
+      startInfo.ArgumentList.Add(processId.ToString());
+      startInfo.ArgumentList.Add("/T");
+      startInfo.ArgumentList.Add("/F");
+
+      var terminator = Process.Start(startInfo);
+      if(terminator is null)
+        return false;
+
+      _ = DisposeProcessWhenExitedAsync(terminator);
+
+      return true;
+    }
+    catch(InvalidOperationException)
+    {
+      return false;
+    }
+    catch(Win32Exception)
+    {
+      return false;
+    }
+  }
+
+  private static async Task DisposeProcessWhenExitedAsync(Process process)
+  {
+    try
+    {
+      await process.WaitForExitAsync();
+    }
+    catch(InvalidOperationException)
+    {
+    }
+    catch(Win32Exception)
+    {
+    }
+    finally
+    {
+      process.Dispose();
+    }
   }
 
   private void AppendOutput(string componentName, string line)
@@ -458,6 +626,12 @@ public class PyAresManager : IPyAresManager
     if(component is null)
       return;
 
+    if(_componentTokens.ContainsKey(name))
+    {
+      _logger.LogInformation("PyAres component {Name} is already running or stopping.", name);
+      return;
+    }
+
     var status = new PyAresComponentStatus { Name = name };
     _statuses.Add(status);
     _statusSubject.OnNext(_statuses);
@@ -465,7 +639,7 @@ public class PyAresManager : IPyAresManager
     await StartComponentInternal(component, status);
   }
 
-  public async Task StopComponent(string name)
+  public Task StopComponent(string name)
   {
     if(_attachedProcesses.TryGetValue(name, out var attachedPid))
     {
@@ -483,6 +657,7 @@ public class PyAresManager : IPyAresManager
       catch(Exception ex)
       {
         _logger.LogWarning(ex, "Failed to kill attached PyAres process {Name}", name);
+        Console.WriteLine($"Failed to kill attached PyAres process {name}");
       }
 
       _attachedProcesses.Remove(name);
@@ -491,45 +666,26 @@ public class PyAresManager : IPyAresManager
 
     if(_componentTokens.TryGetValue(name, out var existingCts))
     {
-      try
-      {
-        await existingCts.CancelAsync();
-      }
-      catch(Exception ex)
-      {
-        _logger.LogWarning(ex, "Failed to cancel PyAres component {Name} during stop", name);
-      }
+      _ = RequestComponentCancellationAsync(name, existingCts);
     }
 
-    if(_componentTasks.TryGetValue(name, out var existingTask))
+    return Task.CompletedTask;
+  }
+
+  private async Task RequestComponentCancellationAsync(string name, CancellationTokenSource cancellationTokenSource)
+  {
+    try
     {
-      try
-      {
-        var timeout = Task.Delay(TimeSpan.FromSeconds(3));
-        var completed = await Task.WhenAny(existingTask, timeout);
-
-        if(completed != existingTask)
-          _logger.LogWarning("Timeout waiting for PyAres component {Name} to stop.", name);
-      }
-      catch(Exception ex)
-      {
-        _logger.LogWarning(ex, "Error while waiting for PyAres component {Name} to stop.", name);
-      }
+      await cancellationTokenSource.CancelAsync();
     }
-
-    var statuses = (_statusSubject.Value ?? Array.Empty<PyAresComponentStatus>()).ToList();
-    var status = statuses.FirstOrDefault(s => s.Name == name);
-    if(status is null)
+    catch(OperationCanceledException)
     {
-      status = new PyAresComponentStatus { Name = name };
-      statuses.Add(status);
+      // The process task handles cancellation as part of its normal shutdown path.
     }
-
-    status.IsRunning = false;
-    status.LastError = null;
-
-    _statusSubject.OnNext(statuses);
-    _anyRunningSubject.OnNext(statuses.Any(s => s.IsRunning));
+    catch(Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to cancel PyAres component {Name} during stop", name);
+    }
   }
 
   private PyAresRuntimeState LoadRuntimeState()
@@ -591,12 +747,12 @@ public class PyAresManager : IPyAresManager
     SaveRuntimeState(state);
   }
 
-  private void RemoveRuntimeEntry(string name) 
+  private void RemoveRuntimeEntry(string name, int? expectedPid = null)
   {
     UpdateRuntimeState(state =>
     {
       var entry = state.Components.FirstOrDefault(c => c.Name == name);
-      if(entry is not null)
+      if(entry is not null && (!expectedPid.HasValue || entry.Pid == expectedPid.Value))
       {
         state.Components.Remove(entry);
       }
@@ -605,4 +761,6 @@ public class PyAresManager : IPyAresManager
 
   public IObservable<bool> AnyPyAresRunning { get; }
   public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
+
+  private sealed record StartedPythonProcess(int ProcessId, Task Task);
 }
