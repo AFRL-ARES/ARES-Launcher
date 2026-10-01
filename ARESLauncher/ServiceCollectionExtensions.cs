@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
     collection.AddSingleton<IBrowserOpener, BrowserOpener>();
     collection.AddSingleton<IConflictManager, ConflictManager>();
     collection.AddSingleton<IPyAresManager, PyAresManager>();
+    collection.AddSingleton<IDemoAresManager, DemoAresManager>();
     collection.AddTransient<ConfigurationOverviewViewModel>();
     collection.AddTransient<ConfigurationEditorViewModel>();
     collection.AddTransient<PyAresConfigurationViewModel>();

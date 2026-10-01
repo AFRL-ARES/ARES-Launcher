@@ -31,6 +31,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<IReactiveCommand?> _buttonCommand;
   private readonly ObservableAsPropertyHelper<string> _buttonText;
   private readonly IConflictManager _conflictManager;
+  private readonly IDemoAresManager _demoAresManager;
   private readonly IPyAresManager _pyAresManager;
   private readonly ObservableAsPropertyHelper<UpdateStep> _currentUpdateStep;
   private readonly IDatabaseManager _databaseManager;
@@ -54,6 +55,7 @@ public partial class MainViewModel : ViewModelBase
     IDatabaseManager databaseManager,
     IBrowserOpener browserOpener,
     IConflictManager conflictManager,
+    IDemoAresManager demoAresManager,
     IPyAresManager pyAresManager, 
     PyAresConfigurationViewModel pyAresConfigurationViewModel)
   {
@@ -66,6 +68,7 @@ public partial class MainViewModel : ViewModelBase
     _launcherUpdater = launcherUpdater;
     _databaseManager = databaseManager;
     _conflictManager = conflictManager;
+    _demoAresManager = demoAresManager;
     _pyAresManager = pyAresManager;
     PyAresConfig = pyAresConfigurationViewModel;
     _isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
@@ -77,6 +80,7 @@ public partial class MainViewModel : ViewModelBase
     StartAresCommand = ReactiveCommand.CreateFromTask(async () =>
     {
       _aresStarter.Start();
+      await _demoAresManager.StartAll();
       await _pyAresManager.StartAll();
       await Task.Delay(TimeSpan.FromSeconds(1));
       browserOpener.Open();
@@ -84,6 +88,7 @@ public partial class MainViewModel : ViewModelBase
     StopAresCommand = ReactiveCommand.CreateFromTask(async () =>
     {
       await _pyAresManager.StopAll();
+      await _demoAresManager.StopAll();
       await _aresStarter.Stop();
     });
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);

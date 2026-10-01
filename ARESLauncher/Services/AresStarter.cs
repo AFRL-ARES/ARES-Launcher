@@ -6,8 +6,6 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
-using CliWrap;
-using CliWrap.Exceptions;
 using Microsoft.Extensions.Logging;
 using ARESLauncher.Services.Configuration;
 
@@ -15,13 +13,6 @@ namespace ARESLauncher.Services;
 
 public class AresStarter : IAresStarter
 {
-  private static readonly string[] DemoServiceExecutableNames =
-  [
-    "DemoRemoteAnalyzer",
-    "DemoRemoteDevice",
-    "DemoRemotePlanner"
-  ];
-
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IExecutableGetter _executableGetter;
   private readonly IAppConfigurationService _configurationService;
@@ -32,7 +23,6 @@ public class AresStarter : IAresStarter
 
   private Task _uiTask = Task.CompletedTask;
   private Task _serviceTask = Task.CompletedTask;
-  private Task[] _demoServiceTasks = [];
 
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
@@ -80,12 +70,6 @@ public class AresStarter : IAresStarter
 
     _cancellationTokenSource = new CancellationTokenSource();
     _stopInitiated = 0;
-    _demoServiceTasks = [];
-
-    if(demoMode)
-    {
-      _demoServiceTasks = StartDemoServices(_cancellationTokenSource.Token);
-    }
 
     if(!_aresUiRunningSubject.Value)
     {
@@ -103,12 +87,12 @@ public class AresStarter : IAresStarter
     await _cancellationTokenSource.CancelAsync();
     try
     {
-      await Task.WhenAll([_serviceTask, _uiTask, .. _demoServiceTasks]);
+      await Task.WhenAll(_serviceTask, _uiTask);
     }
     catch(OperationCanceledException)
     {
     }
-    catch(CommandExecutionException e)
+    catch(Exception e)
     {
       _logger.LogError("Error from execution: {Exception}", e);
     }
@@ -159,14 +143,35 @@ public class AresStarter : IAresStarter
 
     var serviceDir = Path.GetDirectoryName(serviceExecutable) ?? "";
 
-    var serviceTask = Cli.Wrap(serviceExecutable)
-      .WithWorkingDirectory(serviceDir)
-      .ExecuteAsync(cancellationToken)
-      .Task;
+    var process = new Process
+    {
+      StartInfo = new ProcessStartInfo
+      {
+        FileName = serviceExecutable,
+        WorkingDirectory = serviceDir,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      }
+    };
 
-    ProcessServiceTask(serviceTask);
+    try
+    {
+      if(!process.Start())
+        throw new InvalidOperationException("Failed to start the ARES service process.");
 
-    return serviceTask;
+      var serviceTask = process.WaitForExitAndKillOnCancelAsync(cancellationToken);
+      ProcessServiceTask(serviceTask);
+
+      return serviceTask;
+    }
+    catch(Exception ex)
+    {
+      ProcessExtensions.TerminateProcess(process);
+      process.Dispose();
+      var serviceTask = Task.FromException<int>(ex);
+      ProcessServiceTask(serviceTask);
+      return serviceTask;
+    }
   }
 
   private Task? StartUi(CancellationToken cancellationToken, bool demoMode)
@@ -187,53 +192,35 @@ public class AresStarter : IAresStarter
 
     var uiDir = Path.GetDirectoryName(uiExecutable) ?? "";
 
-    var command = Cli.Wrap(uiExecutable)
-      .WithWorkingDirectory(uiDir);
-
+    var startInfo = new ProcessStartInfo
+    {
+      FileName = uiExecutable,
+      WorkingDirectory = uiDir,
+      UseShellExecute = false,
+      CreateNoWindow = true
+    };
     if(demoMode)
+      startInfo.ArgumentList.Add("--demo");
+
+    var process = new Process { StartInfo = startInfo };
+    try
     {
-      command = command.WithArguments("--demo");
+      if(!process.Start())
+        throw new InvalidOperationException("Failed to start the ARES UI process.");
+
+      var uiTask = process.WaitForExitAndKillOnCancelAsync(cancellationToken);
+      ProcessUiTask(uiTask);
+
+      return uiTask;
     }
-
-    var uiTask = command.ExecuteAsync(cancellationToken).Task;
-
-    ProcessUiTask(uiTask);
-
-    return uiTask;
-  }
-
-  private Task[] StartDemoServices(CancellationToken cancellationToken)
-  {
-    var tasks = new Task[DemoServiceExecutableNames.Length];
-    for(var i = 0; i < DemoServiceExecutableNames.Length; i++)
+    catch(Exception ex)
     {
-      var serviceName = DemoServiceExecutableNames[i];
-      var executablePath = _executableGetter.GetDemoServiceExecutablePath(serviceName);
-      if(executablePath is null || !File.Exists(executablePath))
-      {
-        _logger.LogError("Demo service executable is not present: {ExecutablePath}", executablePath);
-        tasks[i] = Task.CompletedTask;
-        continue;
-      }
-
-      var workingDirectory = Path.GetDirectoryName(executablePath);
-      if(string.IsNullOrEmpty(workingDirectory))
-      {
-        _logger.LogError("Couldn't resolve the working directory for demo service {ServiceName}.", serviceName);
-        tasks[i] = Task.CompletedTask;
-        continue;
-      }
-
-      var demoServiceTask = Cli.Wrap(executablePath)
-        .WithWorkingDirectory(workingDirectory)
-        .ExecuteAsync(cancellationToken)
-        .Task;
-
-      ProcessDemoServiceTask(demoServiceTask, serviceName);
-      tasks[i] = demoServiceTask;
+      ProcessExtensions.TerminateProcess(process);
+      process.Dispose();
+      var uiTask = Task.FromException<int>(ex);
+      ProcessUiTask(uiTask);
+      return uiTask;
     }
-
-    return tasks;
   }
 
   private void ProcessUiTask(Task ui)
@@ -276,23 +263,6 @@ public class AresStarter : IAresStarter
     }, TaskScheduler.Default);
 
     _aresServiceRunningSubject.OnNext(true);
-  }
-
-  private void ProcessDemoServiceTask(Task demoService, string executableName)
-  {
-    demoService.ContinueWith(t =>
-    {
-      if(t.IsFaulted)
-      {
-        _logger.LogError(t.Exception, "Demo service {ExecutableName} task faulted; stopping ARES.", executableName);
-        TriggerStopOnce();
-      }
-      else if(!t.IsCanceled)
-      {
-        _logger.LogInformation("Demo service {ExecutableName} task completed; stopping ARES.", executableName);
-        TriggerStopOnce();
-      }
-    }, TaskScheduler.Default);
   }
 
   private void TriggerStopOnce()
