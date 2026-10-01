@@ -6,9 +6,8 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using ARESLauncher.Models;
-using CliWrap;
-using CliWrap.Exceptions;
 using Microsoft.Extensions.Logging;
+using ARESLauncher.Services.Configuration;
 
 namespace ARESLauncher.Services;
 
@@ -16,6 +15,7 @@ public class AresStarter : IAresStarter
 {
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IExecutableGetter _executableGetter;
+  private readonly IAppConfigurationService _configurationService;
   private readonly IDatabaseManager _databaseManager;
   private readonly ILogger<AresStarter> _logger;
   private readonly BehaviorSubject<bool> _aresUiRunningSubject = new(false);
@@ -27,10 +27,11 @@ public class AresStarter : IAresStarter
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
 
-  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, IDatabaseManager databaseManager, ILogger<AresStarter> logger)
+  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, IAppConfigurationService configurationService, IDatabaseManager databaseManager, ILogger<AresStarter> logger)
   {
     _aresBinaryManager = aresBinaryManager;
     _executableGetter = executableGetter;
+    _configurationService = configurationService;
     _databaseManager = databaseManager;
     _logger = logger;
     AresUiRunning = _aresUiRunningSubject.AsObservable();
@@ -48,8 +49,9 @@ public class AresStarter : IAresStarter
       return;
     }
 
+    var demoMode = _configurationService.Current.DemoMode;
     var currentVersion = _aresBinaryManager.CurrentVersion;
-    if(currentVersion is not null)
+    if(!demoMode && currentVersion is not null)
     {
       try
       {
@@ -65,22 +67,10 @@ public class AresStarter : IAresStarter
     _stopInitiated = 0;
 
     if(!_aresUiRunningSubject.Value)
-    {
-      var uiTask = StartUi(_cancellationTokenSource.Token);
-      if(uiTask is null)
-      {
-        _uiTask = Task.CompletedTask;
-      }
-    }
+      _uiTask = StartUi(_cancellationTokenSource.Token, demoMode) ?? Task.CompletedTask;
 
     if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService && !_aresServiceRunningSubject.Value)
-    {
-      var serviceTask = StartService(_cancellationTokenSource.Token);
-      if(serviceTask is null)
-      {
-        _serviceTask = Task.CompletedTask;
-      }
-    }
+      _serviceTask = StartService(_cancellationTokenSource.Token) ?? Task.CompletedTask;
   }
 
   public async Task Stop()
@@ -93,7 +83,7 @@ public class AresStarter : IAresStarter
     catch(OperationCanceledException)
     {
     }
-    catch(CommandExecutionException e)
+    catch(Exception e)
     {
       _logger.LogError("Error from execution: {Exception}", e);
     }
@@ -118,9 +108,8 @@ public class AresStarter : IAresStarter
   public void TakeOwnershipService(Process serviceProcess)
   {
     if(_aresServiceRunningSubject.Value)
-    {
       throw new InvalidOperationException("We already have a Service process running. Can't take ownership of a new one before stopping the other one.");
-    }
+
     var serviceTask = serviceProcess.WaitForExitAndKillOnCancelAsync(_cancellationTokenSource.Token);
     ProcessServiceTask(serviceTask);
     _serviceTask = serviceTask;
@@ -144,17 +133,38 @@ public class AresStarter : IAresStarter
 
     var serviceDir = Path.GetDirectoryName(serviceExecutable) ?? "";
 
-    var serviceTask = Cli.Wrap(serviceExecutable)
-      .WithWorkingDirectory(serviceDir)
-      .ExecuteAsync(cancellationToken)
-      .Task;
+    var process = new Process
+    {
+      StartInfo = new ProcessStartInfo
+      {
+        FileName = serviceExecutable,
+        WorkingDirectory = serviceDir,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      }
+    };
 
-    ProcessServiceTask(serviceTask);
+    try
+    {
+      if(!process.Start())
+        throw new InvalidOperationException("Failed to start the ARES service process.");
 
-    return serviceTask;
+      var serviceTask = process.WaitForExitAndKillOnCancelAsync(cancellationToken);
+      ProcessServiceTask(serviceTask);
+
+      return serviceTask;
+    }
+    catch(Exception ex)
+    {
+      ProcessExtensions.TerminateProcess(process);
+      process.Dispose();
+      var serviceTask = Task.FromException<int>(ex);
+      ProcessServiceTask(serviceTask);
+      return serviceTask;
+    }
   }
 
-  private Task? StartUi(CancellationToken cancellationToken)
+  private Task? StartUi(CancellationToken cancellationToken, bool demoMode)
   {
     var uiExecutable = _executableGetter.GetUiExecutablePath();
     if(uiExecutable is null)
@@ -172,14 +182,35 @@ public class AresStarter : IAresStarter
 
     var uiDir = Path.GetDirectoryName(uiExecutable) ?? "";
 
-    var uiTask = Cli.Wrap(uiExecutable)
-      .WithWorkingDirectory(uiDir)
-      .ExecuteAsync(cancellationToken)
-      .Task;
+    var startInfo = new ProcessStartInfo
+    {
+      FileName = uiExecutable,
+      WorkingDirectory = uiDir,
+      UseShellExecute = false,
+      CreateNoWindow = true
+    };
+    if(demoMode)
+      startInfo.ArgumentList.Add("--demo");
 
-    ProcessUiTask(uiTask);
+    var process = new Process { StartInfo = startInfo };
+    try
+    {
+      if(!process.Start())
+        throw new InvalidOperationException("Failed to start the ARES UI process.");
 
-    return uiTask;
+      var uiTask = process.WaitForExitAndKillOnCancelAsync(cancellationToken);
+      ProcessUiTask(uiTask);
+
+      return uiTask;
+    }
+    catch(Exception ex)
+    {
+      ProcessExtensions.TerminateProcess(process);
+      process.Dispose();
+      var uiTask = Task.FromException<int>(ex);
+      ProcessUiTask(uiTask);
+      return uiTask;
+    }
   }
 
   private void ProcessUiTask(Task ui)

@@ -91,7 +91,7 @@
             <StackPanel Spacing="12"
                         IsVisible="{Binding ShowAdvancedOptions}">
                 <Grid ColumnDefinitions="Auto,*"
-                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
                                Margin="0,0,0,8"
@@ -106,100 +106,110 @@
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="SQLite database path:" />
-                    <TextBox Grid.Row="1"
-                             Grid.Column="1"
-                             Margin="12,0,0,8"
-                             Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                               Text="Demo mode:" />
+                    <ToggleSwitch Grid.Row="1"
+                                  Grid.Column="1"
+                                  Margin="12,0,0,8"
+                                  IsChecked="{Binding EditableDemoMode, Mode=TwoWay}" />
 
                     <TextBlock Grid.Row="2"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Database provider:" />
-                    <ComboBox Grid.Row="2"
-                              Grid.Column="1"
-                              Margin="12,0,0,8"
-                              ItemsSource="{Binding DatabaseProviders}"
-                              SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
+                               Text="SQLite database path:" />
+                    <TextBox Grid.Row="2"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableSqliteDatabasePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="3"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="SQL Server connection string:" />
-                    <TextBox Grid.Row="3"
-                             Grid.Column="1"
-                             Margin="12,0,0,8"
-                             Text="{Binding EditableSqlServerConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                               Text="Database provider:" />
+                    <ComboBox Grid.Row="3"
+                              Grid.Column="1"
+                              Margin="12,0,0,8"
+                              ItemsSource="{Binding DatabaseProviders}"
+                              SelectedItem="{Binding EditableDatabaseProvider, Mode=TwoWay}" />
 
                     <TextBlock Grid.Row="4"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Postgres connection string:" />
+                               Text="SQL Server connection string:" />
                     <TextBox Grid.Row="4"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditablePostgresConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableSqlServerConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="5"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Service endpoint:" />
+                               Text="Postgres connection string:" />
                     <TextBox Grid.Row="5"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableServiceEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditablePostgresConnectionString, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="6"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="UI endpoint:" />
+                               Text="Service endpoint:" />
                     <TextBox Grid.Row="6"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableUiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableServiceEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="7"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="ARES data path:" />
+                               Text="UI endpoint:" />
                     <TextBox Grid.Row="7"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableUiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="8"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="ARES service process:" />
+                               Text="ARES data path:" />
                     <TextBox Grid.Row="8"
                              Grid.Column="1"
                              Margin="12,0,0,8"
-                             Text="{Binding EditableAresServiceProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding EditableAresDataPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="9"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Installed ARES layout:" />
-                    <ComboBox Grid.Row="9"
-                              Grid.Column="1"
-                              Margin="12,0,0,8"
-                              ItemsSource="{Binding ReleaseLayouts}"
-                              SelectedItem="{Binding EditableInstalledAresLayout, Mode=TwoWay}" />
+                               Text="ARES service process:" />
+                    <TextBox Grid.Row="9"
+                             Grid.Column="1"
+                             Margin="12,0,0,8"
+                             Text="{Binding EditableAresServiceProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="10"
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
+                               Text="Installed ARES layout:" />
+                    <ComboBox Grid.Row="10"
+                              Grid.Column="1"
+                              Margin="12,0,0,8"
+                              ItemsSource="{Binding ReleaseLayouts}"
+                              SelectedItem="{Binding EditableInstalledAresLayout, Mode=TwoWay}" />
+
+                    <TextBlock Grid.Row="11"
+                               Grid.Column="0"
+                               Margin="0,0,0,8"
+                               VerticalAlignment="Center"
                                Text="ARES UI process:" />
-                    <TextBox Grid.Row="10"
+                    <TextBox Grid.Row="11"
                              Grid.Column="1"
                              Margin="12,0,0,0"
                              Text="{Binding EditableAresUiProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -215,11 +225,11 @@
                                       Margin="0,0,0,8">
                                     <TextBox Grid.Column="0"
                                              Margin="0,0,8,0"
-                                             Watermark="Owner"
+                                             PlaceholderText="Owner"
                                              Text="{Binding Owner, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBox Grid.Column="1"
                                              Margin="0,0,0,0"
-                                             Watermark="Repository"
+                                             PlaceholderText="Repository"
                                              Text="{Binding Repo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                             </DataTemplate>

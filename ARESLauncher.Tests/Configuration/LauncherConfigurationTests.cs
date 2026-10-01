@@ -8,18 +8,21 @@ namespace ARESLauncher.Tests.Configuration;
 public class LauncherConfigurationTests
 {
   [Test]
-  public void LauncherConfiguration_SerializesAndDeserializes_InstalledLayout()
+  public void LauncherConfiguration_SerializesAndDeserializes_InstalledLayoutAndDemoMode()
   {
     var configuration = new LauncherConfiguration
     {
-      InstalledAresLayout = AresReleaseLayout.UnifiedUiOnly
+      InstalledAresLayout = AresReleaseLayout.UnifiedUiOnly,
+      DemoMode = true
     };
 
     var json = JsonSerializer.Serialize(configuration);
     var roundTripped = JsonSerializer.Deserialize<LauncherConfiguration>(json);
 
     Assert.That(json, Does.Contain("UnifiedUiOnly"));
+    Assert.That(json, Does.Contain("DemoMode"));
     Assert.That(roundTripped, Is.Not.Null);
     Assert.That(roundTripped!.InstalledAresLayout, Is.EqualTo(AresReleaseLayout.UnifiedUiOnly));
+    Assert.That(roundTripped.DemoMode, Is.True);
   }
 }

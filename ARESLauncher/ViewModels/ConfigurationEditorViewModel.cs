@@ -120,6 +120,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
       configuration.AresUiProcessName = EditableAresUiProcessName;
       configuration.InstalledAresLayout = EditableInstalledAresLayout;
       configuration.IncludeBeta = EditableIncludeBeta;
+      configuration.DemoMode = EditableDemoMode;
 
       var validRepositories = AvailableRepositories
         .Where(IsValidRepository)
@@ -164,6 +165,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresUiProcessName = current.AresUiProcessName;
     EditableInstalledAresLayout = current.InstalledAresLayout;
     EditableIncludeBeta = current.IncludeBeta;
+    EditableDemoMode = current.DemoMode;
 
     AvailableRepositories.Clear();
     foreach(var repo in current.AvailableAresRepos)
@@ -331,6 +333,9 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
 
   [Reactive]
   public partial bool EditableIncludeBeta { get; set; }
+
+  [Reactive]
+  public partial bool EditableDemoMode { get; set; }
 
   [Reactive]
   public partial bool ShowAdvancedOptions { get; set; }

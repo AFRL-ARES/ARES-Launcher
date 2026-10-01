@@ -40,6 +40,7 @@ public class LauncherConfiguration
   public string AresServiceProcessName { get; set; } = "AresService";
   public string AresUiProcessName { get; set; } = "UI";
   public bool IncludeBeta { get; set; } = false;
+  public bool DemoMode { get; set; } = false;
 
   public PyAresComponentConfig[] PyAresComponents { get; set; } = Array.Empty<PyAresComponentConfig>();
 }
