@@ -100,6 +100,7 @@ public partial class MainViewModel : ViewModelBase
     ResolveConflictsCommand = ReactiveCommand.CreateFromTask(async () =>
     {
       ConflictsResolved = false;
+      await _demoAresManager.StopOrphanedProcessesAsync();
       bool uiExists = conflictManager.FindPotentialUi();
       bool serviceExists = conflictManager.FindPotentialService();
       bool conflict = uiExists || serviceExists;

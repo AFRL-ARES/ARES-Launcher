@@ -20,6 +20,8 @@ public sealed class DemoAresManager : IDemoAresManager
   private readonly Dictionary<string, CancellationTokenSource> _serviceTokens = new();
   private readonly Dictionary<string, int> _serviceProcessIds = new();
   private readonly Dictionary<string, Task> _serviceTasks = new();
+  private readonly SemaphoreSlim _orphanCleanupLock = new(1, 1);
+  private bool _orphanCleanupCompleted;
 
   public DemoAresManager(IAppConfigurationService configurationService, IExecutableGetter executableGetter, ILogger<DemoAresManager> logger)
   {
@@ -28,15 +30,74 @@ public sealed class DemoAresManager : IDemoAresManager
     _logger = logger;
   }
 
-  public Task StartAll()
+  public async Task StartAll()
   {
+    await StopOrphanedProcessesAsync();
+
     if(!_configurationService.Current.DemoMode)
-      return Task.CompletedTask;
+      return;
 
     foreach(var serviceName in DemoServiceNames)
       StartService(serviceName);
+  }
 
-    return Task.CompletedTask;
+  public async Task StopOrphanedProcessesAsync()
+  {
+    await _orphanCleanupLock.WaitAsync();
+    try
+    {
+      if(_orphanCleanupCompleted)
+        return;
+
+      foreach(var serviceName in DemoServiceNames)
+      {
+        Process[] processes;
+        try
+        {
+          processes = Process.GetProcessesByName(serviceName);
+        }
+        catch(Exception ex)
+        {
+          _logger.LogWarning(ex, "Failed to find orphaned demo service processes for {ServiceName}.", serviceName);
+          continue;
+        }
+
+        foreach(var process in processes)
+        {
+          try
+          {
+            if(!process.HasExited)
+            {
+              _logger.LogInformation("Stopping orphaned demo service {ServiceName} with process ID {ProcessId}.", serviceName, process.Id);
+              ProcessExtensions.TerminateProcess(process);
+              await process.WaitForExitAsync();
+            }
+          }
+          catch(ArgumentException)
+          {
+            // The process exited between discovery and cleanup.
+          }
+          catch(InvalidOperationException)
+          {
+            // The process exited before its state could be queried.
+          }
+          catch(Exception ex)
+          {
+            _logger.LogWarning(ex, "Failed to stop orphaned demo service {ServiceName} with process ID {ProcessId}.", serviceName, process.Id);
+          }
+          finally
+          {
+            process.Dispose();
+          }
+        }
+      }
+
+      _orphanCleanupCompleted = true;
+    }
+    finally
+    {
+      _orphanCleanupLock.Release();
+    }
   }
 
   public async Task StopAll()
