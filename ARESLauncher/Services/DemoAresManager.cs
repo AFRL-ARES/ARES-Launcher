@@ -189,23 +189,17 @@ public sealed class DemoAresManager : IDemoAresManager
     }
   }
 
-  private void ProcessServiceTask(
-    string serviceName,
-    StartedDemoProcess startedProcess,
-    CancellationTokenSource cancellationTokenSource)
+  private void ProcessServiceTask(string serviceName, StartedDemoProcess startedProcess, CancellationTokenSource cancellationTokenSource)
   {
     var serviceTask = startedProcess.Task;
     var processId = startedProcess.ProcessId;
     serviceTask.ContinueWith(task =>
     {
       if(task.IsFaulted)
-      {
         _logger.LogError(task.Exception, "Demo service {ServiceName} faulted.", serviceName);
-      }
+      
       else if(!cancellationTokenSource.IsCancellationRequested)
-      {
         _logger.LogInformation("Demo service {ServiceName} completed.", serviceName);
-      }
 
       if(_serviceTokens.TryGetValue(serviceName, out var currentToken) && ReferenceEquals(currentToken, cancellationTokenSource))
         _serviceTokens.Remove(serviceName);

@@ -27,12 +27,7 @@ public class AresStarter : IAresStarter
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
 
-  public AresStarter(
-    IAresBinaryManager aresBinaryManager,
-    IExecutableGetter executableGetter,
-    IAppConfigurationService configurationService,
-    IDatabaseManager databaseManager,
-    ILogger<AresStarter> logger)
+  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, IAppConfigurationService configurationService, IDatabaseManager databaseManager, ILogger<AresStarter> logger)
   {
     _aresBinaryManager = aresBinaryManager;
     _executableGetter = executableGetter;
@@ -72,14 +67,10 @@ public class AresStarter : IAresStarter
     _stopInitiated = 0;
 
     if(!_aresUiRunningSubject.Value)
-    {
       _uiTask = StartUi(_cancellationTokenSource.Token, demoMode) ?? Task.CompletedTask;
-    }
 
     if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService && !_aresServiceRunningSubject.Value)
-    {
       _serviceTask = StartService(_cancellationTokenSource.Token) ?? Task.CompletedTask;
-    }
   }
 
   public async Task Stop()
@@ -117,9 +108,8 @@ public class AresStarter : IAresStarter
   public void TakeOwnershipService(Process serviceProcess)
   {
     if(_aresServiceRunningSubject.Value)
-    {
       throw new InvalidOperationException("We already have a Service process running. Can't take ownership of a new one before stopping the other one.");
-    }
+
     var serviceTask = serviceProcess.WaitForExitAndKillOnCancelAsync(_cancellationTokenSource.Token);
     ProcessServiceTask(serviceTask);
     _serviceTask = serviceTask;
