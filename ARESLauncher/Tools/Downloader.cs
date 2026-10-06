@@ -64,8 +64,7 @@ public static class Downloader
       }
       catch(Exception e)
       {
-        return new ValueTuple<bool, string, string>(false,
-          $"Failed to ensure the destination directory exists. {e.Message}", "");
+        return new ValueTuple<bool, string, string>(false, $"Failed to ensure the destination directory exists. {e.Message}", "");
       }
 
     return new ValueTuple<bool, string, string>(true, "", destination);
