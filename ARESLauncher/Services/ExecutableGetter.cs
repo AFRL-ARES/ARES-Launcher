@@ -8,19 +8,10 @@ namespace ARESLauncher.Services;
 public class ExecutableGetter(IAppConfigurationService _configurationService) : IExecutableGetter
 {
   public string? GetUiExecutablePath()
-  {
-    return GetPath(_configurationService.Current.UiBinaryPath, "UI");
-  }
+    => GetPath(_configurationService.Current.UiBinaryPath, "UI");
 
   public string? GetServiceExecutablePath()
-  {
-    if(_configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly)
-    {
-      return null;
-    }
-
-    return GetPath(_configurationService.Current.ServiceBinaryPath, "AresService");
-  }
+    => _configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly ? null : GetPath(_configurationService.Current.ServiceBinaryPath, "AresService");
 
   public string? GetDemoServiceExecutablePath(string serviceName)
   {
@@ -38,9 +29,7 @@ public class ExecutableGetter(IAppConfigurationService _configurationService) : 
     
     var executablePath = Path.Combine(dataPath, name);
     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-    {
       executablePath = Path.ChangeExtension(executablePath, "exe");
-    }
 
     return executablePath;
   }

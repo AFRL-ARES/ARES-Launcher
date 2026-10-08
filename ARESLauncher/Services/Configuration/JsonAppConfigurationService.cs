@@ -20,10 +20,6 @@ public class JsonAppConfigurationService : IAppConfigurationService
     PersistCurrentInternal(Current);
   }
 
-  public LauncherConfiguration Current { get; private set; }
-
-  public event EventHandler? ConfigUpdated;
-
   public void Update(Action<LauncherConfiguration> applyChanges)
   {
     if(applyChanges is null)
@@ -47,9 +43,7 @@ public class JsonAppConfigurationService : IAppConfigurationService
     {
       var json = File.ReadAllText(_configFilePath);
       if(string.IsNullOrWhiteSpace(json))
-      {
         return new LauncherConfiguration();
-      }
 
       var configuration = JsonSerializer.Deserialize<LauncherConfiguration>(json, _serializerOptions);
       return configuration ?? new LauncherConfiguration();
@@ -68,11 +62,12 @@ public class JsonAppConfigurationService : IAppConfigurationService
   {
     var directory = Path.GetDirectoryName(_configFilePath);
     if(!string.IsNullOrEmpty(directory))
-    {
       Directory.CreateDirectory(directory);
-    }
 
     var json = JsonSerializer.Serialize(configuration, _serializerOptions);
     File.WriteAllText(_configFilePath, json);
   }
+
+  public LauncherConfiguration Current { get; private set; }
+  public event EventHandler? ConfigUpdated;
 }
