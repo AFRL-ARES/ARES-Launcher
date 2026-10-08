@@ -14,10 +14,7 @@ public class JsonAppConfigurationService : IAppConfigurationService
   public JsonAppConfigurationService()
   {
     _configFilePath = Path.Combine(AppContext.BaseDirectory, "areslauncher.config.json");
-    _serializerOptions = new JsonSerializerOptions
-    {
-      WriteIndented = true
-    };
+    _serializerOptions = new JsonSerializerOptions { WriteIndented = true };
 
     Current = LoadConfiguration();
     PersistCurrentInternal(Current);
@@ -30,9 +27,7 @@ public class JsonAppConfigurationService : IAppConfigurationService
   public void Update(Action<LauncherConfiguration> applyChanges)
   {
     if(applyChanges is null)
-    {
       throw new ArgumentNullException(nameof(applyChanges));
-    }
 
     lock(_syncRoot)
     {
@@ -46,9 +41,7 @@ public class JsonAppConfigurationService : IAppConfigurationService
   private LauncherConfiguration LoadConfiguration()
   {
     if(!File.Exists(_configFilePath))
-    {
       return new LauncherConfiguration();
-    }
 
     try
     {

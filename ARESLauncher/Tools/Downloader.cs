@@ -43,7 +43,7 @@ public static class Downloader
     var finalUrl = response.RequestMessage?.RequestUri?.ToString() ?? "";
 
     return !(contentType.Contains("text/html") && finalUrl.EndsWith('/'));
-  }
+  } 
 
   private static (bool Success, string Error, string Destination) EnsureDestinationIsGud(string destination,
     HttpResponseMessage response)
