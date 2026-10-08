@@ -14,10 +14,7 @@ public class JsonAppConfigurationService : IAppConfigurationService
   public JsonAppConfigurationService()
   {
     _configFilePath = Path.Combine(AppContext.BaseDirectory, "areslauncher.config.json");
-    _serializerOptions = new JsonSerializerOptions
-    {
-      WriteIndented = true
-    };
+    _serializerOptions = new JsonSerializerOptions { WriteIndented = true };
 
     Current = LoadConfiguration();
     PersistCurrentInternal(Current);

@@ -43,7 +43,7 @@ public static class Downloader
     var finalUrl = response.RequestMessage?.RequestUri?.ToString() ?? "";
 
     return !(contentType.Contains("text/html") && finalUrl.EndsWith('/'));
-  }
+  } 
 
   private static (bool Success, string Error, string Destination) EnsureDestinationIsGud(string destination, HttpResponseMessage response)
   {
@@ -64,8 +64,7 @@ public static class Downloader
       }
       catch(Exception e)
       {
-        return new ValueTuple<bool, string, string>(false,
-          $"Failed to ensure the destination directory exists. {e.Message}", "");
+        return new ValueTuple<bool, string, string>(false, $"Failed to ensure the destination directory exists. {e.Message}", "");
       }
     }
 

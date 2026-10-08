@@ -148,11 +148,18 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     if(release.Assets is null || release.Assets.Count == 0)
       return null;
 
-    var os = OsBundleNameGetter.GetName();
-    var candidateAssets = release.Assets.Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true).ToArray();
+    var bundleName = OsBundleNameGetter.GetAresName();
+    var candidateAssets = release.Assets.Where(a => IsBundleAsset(a.Name, bundleName)).ToArray();
 
-    if(candidateAssets.Length == 0)
-      candidateAssets = release.Assets.ToArray();
+    // Releases from before architecture-specific macOS packages used the generic
+    // -macos.zip suffix. Keep those releases installable without weakening the
+    // exact architecture match above.
+    if(candidateAssets.Length == 0 && bundleName.StartsWith("macos-", StringComparison.Ordinal))
+    {
+      candidateAssets = release.Assets
+        .Where(a => IsBundleAsset(a.Name, "macos"))
+        .ToArray();
+    }
 
     var preferred = candidateAssets.FirstOrDefault(a =>
       a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true &&
@@ -167,6 +174,15 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       return preferred;
 
     return candidateAssets.Length == 1 ? candidateAssets[0] : null;
+  }
+
+  private static bool IsBundleAsset(string? assetName, string bundleName)
+  {
+    if(string.IsNullOrWhiteSpace(assetName))
+      return false;
+
+    return assetName.EndsWith($"-{bundleName}.zip", StringComparison.OrdinalIgnoreCase) ||
+           assetName.Equals($"{bundleName}.zip", StringComparison.OrdinalIgnoreCase);
   }
 
   private static ReleaseAsset? SelectAssetForLauncher(Release release)

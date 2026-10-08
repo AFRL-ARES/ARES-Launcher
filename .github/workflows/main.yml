@@ -3,6 +3,17 @@ name: ARES Launcher Release Pipeline
 on:
   release:
     types: [released]
+  # Allows manual triggering from the GitHub Actions tab for dry-runs
+  workflow_dispatch:
+    inputs:
+      test_tag:
+        description: 'Tag/Version to simulate (e.g. v1.0.0-test)'
+        required: true
+        default: 'v0.0.0-test'
+      is_draft:
+        description: 'Publish as a draft release (hidden from public)'
+        type: boolean
+        default: true
 
 env:
   PROJECT_FILE: 'ARESLauncher.Desktop/ARESLauncher.Desktop.csproj'
@@ -31,19 +42,16 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      ZIP_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
-      DMG_FILE_NAME: 'ARES-LAUNCHER-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.dmg'
-      OFFLINE_ZIP_NAME: 'ARES-LAUNCHER-Offline-${{ github.event.release.tag_name }}-${{ matrix.os_name_tag }}.zip'
-    
+
     steps:
     - name: Setup Variables
       run: |
-        TAG="${{ github.event.release.tag_name }}"
+        # Fall back to workflow_dispatch input if not a release event
+        TAG="${{ github.event.release.tag_name || inputs.test_tag || 'v0.0.0-test' }}"
         
         echo "Using Version Tag: $TAG"
         
-        # Calculate file names and push them to GITHUB_ENV so subsequent steps can see them
+        # Calculate file names and push them to GITHUB_ENV
         echo "ZIP_FILE_NAME=ARES_Launcher_${TAG}-${{ matrix.os_name_tag }}.zip" >> $GITHUB_ENV
         echo "OFFLINE_ZIP_NAME=ARES_Launcher_${TAG}-offline-${{ matrix.os_name_tag }}.zip" >> $GITHUB_ENV
         echo "DMG_FILE_NAME=ARES_Launcher_${TAG}-${{ matrix.os_name_tag }}.dmg" >> $GITHUB_ENV
@@ -78,12 +86,37 @@ jobs:
           -p:PublishSingleFile=true \
           -p:Version="$VERSION"
 
-    - name: Package for macOS
+    - name: Publish Dual Architectures for macOS
+      if: runner.os == 'macOS'
+      run: |
+        TAG=${{ env.RELEASE_TAG }}
+        VERSION=${TAG#v}
+
+        echo "Publishing x64 build..."
+        dotnet publish "${{ env.PROJECT_FILE }}" --configuration Release \
+          --output "publish-x64" \
+          -r osx-x64 \
+          --self-contained true \
+          -p:UseAppHost=true \
+          -p:PublishSingleFile=true \
+          -p:Version="$VERSION"
+
+        echo "Publishing arm64 build..."
+        dotnet publish "${{ env.PROJECT_FILE }}" \
+          --configuration Release \
+          --output "publish-arm64" \
+          -r osx-arm64 \
+          --self-contained true \
+          -p:UseAppHost=true \
+          -p:PublishSingleFile=true \
+          -p:Version="$VERSION"
+
+    - name: Package Universal 2 macOS DMG
       if: runner.os == 'macOS'
       run: |
         chmod +x package-macos.sh
-        VERSION=${{ github.event.release.tag_name }}
-        ./package-macos.sh ${{ env.OUTPUT_PATH }} ${VERSION#v} ${{ env.DMG_FILE_NAME }}
+        TAG=${{ env.RELEASE_TAG }}
+        ./package-macos.sh publish-x64 publish-arm64 ${TAG#v} ${{ env.DMG_FILE_NAME }}
 
     - name: Create ZIP Archive (Windows)
       shell: pwsh
@@ -123,9 +156,10 @@ jobs:
         zip -r ../${{ env.OFFLINE_ZIP_NAME }} .
     
     - name: Upload Published Binaries to Release
-      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        draft: ${{ github.event_name == 'workflow_dispatch' && inputs.is_draft || false }}
         files: |
           ${{ env.ZIP_FILE_NAME }}
           ${{ env.OFFLINE_ZIP_NAME }}

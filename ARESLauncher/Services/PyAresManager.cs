@@ -568,6 +568,7 @@ public class PyAresManager : IPyAresManager
     return Task.CompletedTask;
   }
 
+
   private async Task RequestComponentCancellationAsync(string name, CancellationTokenSource cancellationTokenSource)
   {
     try
@@ -649,9 +650,7 @@ public class PyAresManager : IPyAresManager
     {
       var entry = state.Components.FirstOrDefault(c => c.Name == name);
       if(entry is not null && (!expectedPid.HasValue || entry.Pid == expectedPid.Value))
-      {
         state.Components.Remove(entry);
-      }
     });
   }
 
