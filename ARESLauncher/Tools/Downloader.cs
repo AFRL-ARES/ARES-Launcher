@@ -45,8 +45,7 @@ public static class Downloader
     return !(contentType.Contains("text/html") && finalUrl.EndsWith('/'));
   }
 
-  private static (bool Success, string Error, string Destination) EnsureDestinationIsGud(string destination,
-    HttpResponseMessage response)
+  private static (bool Success, string Error, string Destination) EnsureDestinationIsGud(string destination, HttpResponseMessage response)
   {
     if(ShouldTreatAsDirectory(destination))
     {
@@ -58,6 +57,7 @@ public static class Downloader
 
     var directoryPath = Path.GetDirectoryName(destination);
     if(!string.IsNullOrEmpty(directoryPath))
+    {
       try
       {
         Directory.CreateDirectory(directoryPath);
@@ -67,17 +67,21 @@ public static class Downloader
         return new ValueTuple<bool, string, string>(false,
           $"Failed to ensure the destination directory exists. {e.Message}", "");
       }
+    }
 
     return new ValueTuple<bool, string, string>(true, "", destination);
   }
 
   private static bool ShouldTreatAsDirectory(string path)
   {
-    if(File.Exists(path)) return false;
+    if(File.Exists(path)) 
+      return false;
 
-    if(Directory.Exists(path)) return true;
+    if(Directory.Exists(path)) 
+      return true;
 
-    if(path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)) return true;
+    if(path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)) 
+      return true;
 
     return string.IsNullOrEmpty(Path.GetFileName(path));
   }
@@ -85,13 +89,13 @@ public static class Downloader
   private static string? ResolveFileName(HttpResponseMessage response)
   {
     var disposition = response.Content.Headers.ContentDisposition;
-    if(disposition == null) return null;
+    if(disposition == null) 
+      return null;
 
-    var candidate = !string.IsNullOrWhiteSpace(disposition.FileNameStar)
-      ? disposition.FileNameStar
-      : disposition.FileName;
+    var candidate = !string.IsNullOrWhiteSpace(disposition.FileNameStar) ? disposition.FileNameStar : disposition.FileName;
 
-    if(string.IsNullOrWhiteSpace(candidate)) return null;
+    if(string.IsNullOrWhiteSpace(candidate)) 
+      return null;
 
     var trimmed = candidate.Trim().Trim('"');
     var safeName = Path.GetFileName(trimmed);
@@ -99,8 +103,7 @@ public static class Downloader
     return string.IsNullOrWhiteSpace(safeName) ? null : safeName;
   }
 
-  private static async Task CopyWithProgressAsync(Stream source, Stream destination, long? contentLength,
-    IProgress<double>? progress)
+  private static async Task CopyWithProgressAsync(Stream source, Stream destination, long? contentLength, IProgress<double>? progress)
   {
     const int bufferSize = 81920;
     var buffer = new byte[bufferSize];

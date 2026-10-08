@@ -18,22 +18,16 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
   private static readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(30);
 
   public async Task<AresRelease[]> GetAvailableVersions(AresSource source, string? authToken)
-  {
-    return await GetCachedVersions(authToken, source.Owner, source.Repo);
-  }
+    => await GetCachedVersions(authToken, source.Owner, source.Repo);
 
   public async Task<AresRelease[]> GetAvailableVersions(LauncherSource source, string? authToken)
-  {
-    return await GetCachedVersions(authToken, source.Owner, source.Repo);
-  }
-
+    => await GetCachedVersions(authToken, source.Owner, source.Repo);
+ 
   private async Task<AresRelease[]> GetCachedVersions(string? authToken, string owner, string repo)
   {
     var cacheKey = $"{owner}/{repo}/{authToken ?? ""}";
     if(_cache.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow - cached.timestamp < _cacheDuration)
-    {
       return cached.releases;
-    }
 
     var client = CreateClient(authToken);
     var versions = await FetchAndNormalizeVersions(client, owner, repo);
@@ -44,25 +38,18 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
   }
 
   public void InvalidateCache()
-  {
-    _cache.Clear();
-  }
-
-  public async Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken,
-    IProgress<double>? progress = null)
+    => _cache.Clear();
+  
+  public async Task<string> Download(LauncherSource source, SemanticVersion version, string destination, string? authToken, IProgress<double>? progress = null)
   {
     var client = CreateClient(authToken);
     var release = await GetReleaseForVersion(client, source, version);
-    var asset = SelectAssetForLauncher(release) ??
-                throw new InvalidOperationException(
-                  $"No launcher asset found in release {release.TagName} for {OsBundleNameGetter.GetName()}.");
+    var asset = SelectAssetForLauncher(release) ?? throw new InvalidOperationException($"No launcher asset found in release {release.TagName} for {OsBundleNameGetter.GetName()}.");
 
     var downloadUri = new Uri(asset.Url);
     var downloadResult = await Downloader.Download(downloadUri, destination, authToken, progress);
 
-    return !downloadResult.Success
-      ? throw new InvalidOperationException($"Failed to download launcher {version}: {downloadResult.Error}")
-      : downloadResult.ResultingFilePath!;
+    return !downloadResult.Success ? throw new InvalidOperationException($"Failed to download launcher {version}: {downloadResult.Error}") : downloadResult.ResultingFilePath!;
   }
 
   private async Task<List<AresRelease>> FetchAndNormalizeVersions(GitHubClient client, string owner, string repo)
@@ -103,22 +90,17 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     return versions;
   }
 
-  public async Task<string> Download(AresSource source, SemanticVersion version,
-    string destination, string? authToken, IProgress<double>? progress = null)
+  public async Task<string> Download(AresSource source, SemanticVersion version, string destination, string? authToken, IProgress<double>? progress = null)
   {
     var client = CreateClient(authToken);
     var release = await GetReleaseForVersion(client, source, version);
-    var asset = SelectAssetForAresRelease(release) ??
-                throw new InvalidOperationException(
-                  $"No ARES asset found in release {release.TagName} for {OsBundleNameGetter.GetName()}.");
+    var asset = SelectAssetForAresRelease(release) ?? throw new InvalidOperationException($"No ARES asset found in release {release.TagName} for {OsBundleNameGetter.GetName()}.");
 
     var downloadUri = new Uri(asset.Url);
     var downloadResult = await Downloader.Download(downloadUri, destination, authToken, progress);
 
     // Technically ResultingFilePath could be null, but if our download result is a success, there's no reason it should.
-    return !downloadResult.Success
-      ? throw new InvalidOperationException($"Failed to download ARES {version}: {downloadResult.Error}")
-      : downloadResult.ResultingFilePath!;
+    return !downloadResult.Success ? throw new InvalidOperationException($"Failed to download ARES {version}: {downloadResult.Error}") : downloadResult.ResultingFilePath!;
   }
 
   private static GitHubClient CreateClient(string? authtoken)
@@ -131,8 +113,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     return client;
   }
 
-  private static async Task<Release> GetReleaseForVersion(GitHubClient client, AresSource source,
-    SemanticVersion version)
+  private static async Task<Release> GetReleaseForVersion(GitHubClient client, AresSource source, SemanticVersion version)
   {
     var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo, _fetchOptions);
     foreach(var release in releases)
@@ -141,16 +122,13 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       var versionString = TagToVersion(tag);
       var isVersion = SemanticVersion.TryParse(versionString ?? "", out var parsedVersion);
       if(isVersion && version.Equals(parsedVersion))
-      {
         return release;
-      }
     }
 
     throw new InvalidOperationException($"Could not locate release for version {version}.");
   }
 
-  private static async Task<Release> GetReleaseForVersion(GitHubClient client, LauncherSource source,
-    SemanticVersion version)
+  private static async Task<Release> GetReleaseForVersion(GitHubClient client, LauncherSource source, SemanticVersion version)
   {
     var releases = await client.Repository.Release.GetAll(source.Owner, source.Repo, _fetchOptions);
     foreach(var release in releases)
@@ -159,9 +137,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       var versionString = TagToVersion(tag);
       var isVersion = SemanticVersion.TryParse(versionString ?? "", out var parsedVersion);
       if(isVersion && version.Equals(parsedVersion))
-      {
         return release;
-      }
     }
 
     throw new InvalidOperationException($"Could not locate launcher release for version {version}.");
@@ -173,9 +149,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       return null;
 
     var os = OsBundleNameGetter.GetName();
-    var candidateAssets = release.Assets
-      .Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true)
-      .ToArray();
+    var candidateAssets = release.Assets.Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true).ToArray();
 
     if(candidateAssets.Length == 0)
       candidateAssets = release.Assets.ToArray();
@@ -187,8 +161,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     if(preferred is not null)
       return preferred;
 
-    preferred = candidateAssets.FirstOrDefault(a =>
-      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true);
+    preferred = candidateAssets.FirstOrDefault(a => a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true);
 
     if(preferred is not null)
       return preferred;
@@ -202,9 +175,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
       return null;
 
     var os = OsBundleNameGetter.GetName();
-    var candidateAssets = release.Assets
-      .Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true)
-      .ToArray();
+    var candidateAssets = release.Assets.Where(a => a.Name?.Contains(os, StringComparison.OrdinalIgnoreCase) is true).ToArray();
 
     if(candidateAssets.Length == 0)
       candidateAssets = release.Assets.ToArray();
@@ -216,8 +187,7 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
     if(preferred is not null)
       return preferred;
 
-    preferred = candidateAssets.FirstOrDefault(a =>
-      a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true);
+    preferred = candidateAssets.FirstOrDefault(a => a.Name?.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) is true);
 
     if(preferred is not null)
       return preferred;

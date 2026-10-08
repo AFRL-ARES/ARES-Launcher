@@ -20,14 +20,16 @@ public class AresStarter : IAresStarter
   private readonly ILogger<AresStarter> _logger;
   private readonly BehaviorSubject<bool> _aresUiRunningSubject = new(false);
   private readonly BehaviorSubject<bool> _aresServiceRunningSubject = new(false);
-
   private Task _uiTask = Task.CompletedTask;
   private Task _serviceTask = Task.CompletedTask;
-
   private CancellationTokenSource _cancellationTokenSource = new();
   private int _stopInitiated = 0;
 
-  public AresStarter(IAresBinaryManager aresBinaryManager, IExecutableGetter executableGetter, IAppConfigurationService configurationService, IDatabaseManager databaseManager, ILogger<AresStarter> logger)
+  public AresStarter(IAresBinaryManager aresBinaryManager, 
+    IExecutableGetter executableGetter, 
+    IAppConfigurationService configurationService, 
+    IDatabaseManager databaseManager, 
+    ILogger<AresStarter> logger)
   {
     _aresBinaryManager = aresBinaryManager;
     _executableGetter = executableGetter;
@@ -37,9 +39,6 @@ public class AresStarter : IAresStarter
     AresUiRunning = _aresUiRunningSubject.AsObservable();
     AresServiceRunning = _aresServiceRunningSubject.AsObservable();
   }
-
-  public IObservable<bool> AresUiRunning { get; }
-  public IObservable<bool> AresServiceRunning { get; }
 
   public async void Start()
   {
@@ -258,9 +257,7 @@ public class AresStarter : IAresStarter
   private void TriggerStopOnce()
   {
     if(Interlocked.Exchange(ref _stopInitiated, 1) == 0)
-    {
       _ = Stop();
-    }
   }
 
   private bool IsHealthyRunning()
@@ -269,4 +266,7 @@ public class AresStarter : IAresStarter
       ? _aresUiRunningSubject.Value
       : _aresUiRunningSubject.Value && _aresServiceRunningSubject.Value;
   }
+
+  public IObservable<bool> AresUiRunning { get; }
+  public IObservable<bool> AresServiceRunning { get; }
 }
