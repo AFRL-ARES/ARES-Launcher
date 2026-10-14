@@ -13,7 +13,7 @@ namespace ARESLauncher.Services;
 
 public sealed class DemoAresManager : IDemoAresManager
 {
-  private static readonly string[] DemoServiceNames = [ "DemoRemoteAnalyzer", "DemoRemoteDevice", "DemoRemotePlanner" ];
+  private static readonly string[] DemoServiceNames = [ "DemoRemoteAnalyzer", "DemoRemoteDevice", "DemoRemotePlanner", "DemoRemoteVisualizer" ];
   private readonly IAppConfigurationService _configurationService;
   private readonly IExecutableGetter _executableGetter;
   private readonly ILogger<DemoAresManager> _logger;
