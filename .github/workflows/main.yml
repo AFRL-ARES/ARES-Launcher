@@ -111,6 +111,16 @@ jobs:
           -p:PublishSingleFile=true \
           -p:Version="$VERSION"
 
+    - name: Verify macOS Binary Architectures
+      if: runner.os == 'macOS'
+      run: |
+        echo "Launcher binaries:"
+        find publish-x64 publish-arm64 -type f -maxdepth 2 -exec file {} \;
+
+        echo "HarfBuzz architectures:"
+        lipo -archs publish-x64/libHarfBuzzSharp.dylib
+        lipo -archs publish-arm64/libHarfBuzzSharp.dylib
+
     - name: Package Universal 2 macOS DMG
       if: runner.os == 'macOS'
       run: |
