@@ -39,6 +39,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<double> _progress;
   private readonly ObservableAsPropertyHelper<bool> _showProgressBar;
   private readonly ObservableAsPropertyHelper<bool> _updateAvailable;
+  private readonly ObservableAsPropertyHelper<bool> _manualUpdateAvailable;
   private readonly ObservableAsPropertyHelper<bool> _launcherUpdateAvailable;
   private readonly ObservableAsPropertyHelper<bool> _updateInProgress;
   private readonly ObservableAsPropertyHelper<bool> _showDisclaimer;
@@ -56,7 +57,7 @@ public partial class MainViewModel : ViewModelBase
     IBrowserOpener browserOpener,
     IConflictManager conflictManager,
     IDemoAresManager demoAresManager,
-    IPyAresManager pyAresManager, 
+    IPyAresManager pyAresManager,
     PyAresConfigurationViewModel pyAresConfigurationViewModel)
   {
     AvailableAresVersions = [];
@@ -92,6 +93,7 @@ public partial class MainViewModel : ViewModelBase
       await _aresStarter.Stop();
     });
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
+    ManualUpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateFromManualPackage);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
     OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
     UpdateConfirmationDialog = new Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse>();
@@ -108,16 +110,17 @@ public partial class MainViewModel : ViewModelBase
       {
         ConflictsResolved = true;
 
-      // After resolving ARES conflicts, handle any orphaned PyAres processes
-      var orphaned = await _pyAresManager.GetOrphanedProcessesAsync();
-      if(orphaned.Count > 0)
-      {
-        var stopAll = await PyAresOrphansDialog.Handle(orphaned);
-        if(stopAll)
-          await _pyAresManager.StopOrphanedProcessesAsync();
-        else
-          await _pyAresManager.AttachExistingProcessesAsync();
-      }
+        // After resolving ARES conflicts, handle any orphaned PyAres processes
+        var orphaned = await _pyAresManager.GetOrphanedProcessesAsync();
+        if(orphaned.Count > 0)
+        {
+          var stopAll = await PyAresOrphansDialog.Handle(orphaned);
+          if(stopAll)
+            await _pyAresManager.StopOrphanedProcessesAsync();
+          else
+            await _pyAresManager.AttachExistingProcessesAsync();
+        }
+
         return;
       }
 
@@ -135,7 +138,7 @@ public partial class MainViewModel : ViewModelBase
 
     this.WhenAnyValue(x => x.Editor.UpdateInProgress)
       .Skip(1)
-      .Subscribe((bool inProgress) => 
+      .Subscribe((bool inProgress) =>
       {
         if(inProgress == false)
           _ = this.CheckAresCondition();
@@ -160,6 +163,15 @@ public partial class MainViewModel : ViewModelBase
       })
       .ToProperty(this, vm => vm.UpdateAvailable);
 
+    _manualUpdateAvailable = this
+      .WhenAnyValue(x => x.ManualUpdateVersion, x => x.InstalledAresVersion, x => x.AresComponentsRunning, x => x.CurrentUpdateStep,
+        (manualVersion, installedVersion, running, updateStep) =>
+          !string.IsNullOrEmpty(manualVersion) &&
+          !string.Equals(manualVersion, installedVersion, StringComparison.OrdinalIgnoreCase) &&
+          running == 0 &&
+          updateStep == UpdateStep.Idle)
+      .ToProperty(this, vm => vm.ManualUpdateAvailable);
+
 
     _launcherUpdateAvailable = this
       .WhenAnyValue(x => x.AvailableLauncherVersions, (av) =>
@@ -170,75 +182,63 @@ public partial class MainViewModel : ViewModelBase
         return launcherUpdateAvailable;
       })
       .ToProperty(this, ViewModels => ViewModels.LauncherUpdateAvailable);
-    
-      _aresState = this.WhenAnyValue(
-      vm => vm.AresComponentsRunning,
-      vm => vm.AresPresent,
-      vm => vm.DatabaseStatus,
-      vm => vm.CurrentUpdateStep,
-      vm => vm.ProcessOwnerConflict,
-      (isRunning, isPresent, dbStatus, updateStep, processOwnerConflict) =>
-      {
-        if(updateStep != UpdateStep.Idle)
-        {
-          return AresState.Updating;
-        }
 
-        var layout = _aresBinaryManager.CurrentLayout;
-        var fullyRunning = layout == AresReleaseLayout.UnifiedUiOnly ? isRunning >= 1 : isRunning == 2;
+    _aresState = this.WhenAnyValue(
+    vm => vm.AresComponentsRunning,
+    vm => vm.AresPresent,
+    vm => vm.DatabaseStatus,
+    vm => vm.CurrentUpdateStep,
+    vm => vm.ProcessOwnerConflict,
+    (isRunning, isPresent, dbStatus, updateStep, processOwnerConflict) =>
+    {
+      if(updateStep != UpdateStep.Idle)
+        return AresState.Updating;
 
-        if(fullyRunning)
-          return AresState.BothRunning;
+      if(!isPresent)
+        return AresState.NeedsInstall;
 
-        if(!isPresent)
-          return AresState.NeedsInstall;
+      if(dbStatus != DatabaseStatus.UpToDate)
+        return AresState.NeedsDbUpdate;
 
-        if(dbStatus != DatabaseStatus.UpToDate)
-          return dbStatus == DatabaseStatus.Error
-            ? AresState.DatabaseError
-            : AresState.NeedsDbUpdate;
+      if(processOwnerConflict)
+        return AresState.ProcessOwnerConflict;
 
-        if(processOwnerConflict)
-          return AresState.ProcessOwnerConflict;
-
-        return AresState.Ready;
-      }).ToProperty(this, vm => vm.AresState);
+      return AresState.Ready;
+    }).ToProperty(this, vm => vm.AresState);
 
 
     _buttonText = this
-      .WhenAnyValue(vm => vm.AresState, (s) => 
+      .WhenAnyValue(vm => vm.AresState, (s) =>
       {
-          return s switch
-          {
-            AresState.Unknown => ":)",
-            AresState.OneRunning => "Start",
-            AresState.BothRunning => "Stop",
-            AresState.Ready => "Start",
-            AresState.NeedsDbUpdate => "Update DB",
-            AresState.DatabaseError => "Retry",
-            AresState.NeedsInstall => "Install",
-            AresState.Updating => "Updating...",
-            AresState.ProcessOwnerConflict => "Conflict",
-            _ => throw new NotImplementedException()
-          };
+        return s switch
+        {
+          AresState.Unknown => ":)",
+          AresState.OneRunning => "Start",
+          AresState.BothRunning => "Stop",
+          AresState.Ready => "Start",
+          AresState.NeedsDbUpdate => "Update DB",
+          AresState.NeedsInstall => "Install",
+          AresState.Updating => "Updating...",
+          AresState.ProcessOwnerConflict => "Conflict",
+          _ => throw new NotImplementedException()
+        };
       }).ToProperty(this, vm => vm.ButtonText);
 
     _buttonCommand = this
-      .WhenAnyValue(vm => vm.AresState, (s) => 
+      .WhenAnyValue(vm => vm.AresState, (s) =>
       {
-          return s switch
-          {
-            AresState.Unknown => null,
-            AresState.OneRunning => StartAresCommand,
-            AresState.BothRunning => StopAresCommand,
-            AresState.Ready => StartAresCommand,
-            AresState.NeedsDbUpdate => UpdateDatabaseCommand,
-            AresState.DatabaseError => RefreshCommand,
-            AresState.NeedsInstall => UpdateAresCommand,
-            AresState.Updating => null,
-            AresState.ProcessOwnerConflict => null,
-            _ => throw new NotImplementedException()
-          };
+        return s switch
+        {
+          AresState.Unknown => null,
+          AresState.OneRunning => StartAresCommand,
+          AresState.BothRunning => StopAresCommand,
+          AresState.Ready => StartAresCommand,
+          AresState.NeedsDbUpdate => UpdateDatabaseCommand,
+          AresState.NeedsInstall => UpdateAresCommand,
+          AresState.Updating => null,
+          AresState.ProcessOwnerConflict => null,
+          _ => throw new NotImplementedException()
+        };
       }).ToProperty(this, vm => vm.ButtonCommand);
 
     _auxButtonContent = this
@@ -250,7 +250,6 @@ public partial class MainViewModel : ViewModelBase
         AresState.BothRunning => "Globe",
         AresState.Ready => null,
         AresState.NeedsDbUpdate => null,
-        AresState.DatabaseError => null,
         AresState.NeedsInstall => null,
         AresState.Updating => null,
         AresState.ProcessOwnerConflict => null,
@@ -266,7 +265,6 @@ public partial class MainViewModel : ViewModelBase
         AresState.BothRunning => OpenBrowserCommand,
         AresState.Ready => null,
         AresState.NeedsDbUpdate => null,
-        AresState.DatabaseError => null,
         AresState.NeedsInstall => null,
         AresState.Updating => null,
         AresState.ProcessOwnerConflict => null,
@@ -282,7 +280,6 @@ public partial class MainViewModel : ViewModelBase
         AresState.BothRunning => "ARES is running",
         AresState.Ready => "ARES is ready",
         AresState.NeedsDbUpdate => "Database out of date",
-        AresState.DatabaseError => "Database check failed",
         AresState.NeedsInstall => "Ready to install",
         AresState.Updating => "Update in progress",
         AresState.ProcessOwnerConflict => "ARES process is owned by other user",
@@ -300,9 +297,7 @@ public partial class MainViewModel : ViewModelBase
       .ToProperty(this, vm => vm.ShowProgressBar);
 
     _launcherReady = this
-      .WhenAnyValue(vm => vm.AresConditionChecked, 
-      vm => vm.ConflictsResolved, 
-      vm => vm.AresState, (chk, resolved, state) => chk && resolved && state != AresState.Updating)
+      .WhenAnyValue(vm => vm.AresConditionChecked, vm => vm.ConflictsResolved, vm => vm.AresState, (chk, resolved, state) => chk && resolved && state != AresState.Updating)
       .ToProperty(this, vm => vm.LauncherReady);
 
     _showDisclaimer = this
@@ -320,47 +315,43 @@ public partial class MainViewModel : ViewModelBase
     InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
     AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
     AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
+    ManualUpdateVersion = _aresUpdater.GetManualUpdatePackage()?.Version.ToNormalizedString() ?? string.Empty;
     AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
   }
 
   public ConflictResolutionDialogViewModel GetConflictResolutionDialogViewModel()
-  {
-    return new ConflictResolutionDialogViewModel(_conflictManager);
-  }
+    => new ConflictResolutionDialogViewModel(_conflictManager);
 
   private async Task CheckAresCondition()
   {
     AresConditionChecked = false;
-    Error = "";
 
-    try
+    await _aresBinaryManager.Refresh();
+    InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
+    AresPresent = _aresBinaryManager.CurrentVersion is not null;
+
+    AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
+    AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
+    ManualUpdateVersion = _aresUpdater.GetManualUpdatePackage()?.Version.ToNormalizedString() ?? string.Empty;
+    AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
+
+    if(!AresPresent)
     {
-      await _aresBinaryManager.Refresh();
-      InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
-      AresPresent = _aresBinaryManager.CurrentVersion is not null;
-
-      AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
-      AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
-      AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
-
-      if(!AresPresent)
-        return;
-
-      await _databaseManager.Refresh();
-      DatabaseStatus = _databaseManager.DatabaseStatus;
-      if(DatabaseStatus == DatabaseStatus.Error)
-        Error = "A database error has occured";
+      AresConditionChecked = true;
+      return;
     }
-    catch(Exception e)
-    {
-      DatabaseStatus = DatabaseStatus.Error;
-      Error = $"Unable to check the ARES installation: {e.Message}";
-    }
-    finally
+
+    await _databaseManager.Refresh();
+    DatabaseStatus = _databaseManager.DatabaseStatus;
+    if(DatabaseStatus != DatabaseStatus.UpToDate)
     {
       AresConditionChecked = true;
       this.RaisePropertyChanged(nameof(UpdateAvailable));
+      return;
     }
+
+    AresConditionChecked = true;
+    this.RaisePropertyChanged(nameof(UpdateAvailable));
   }
 
   private async Task UpdateAres()
@@ -372,7 +363,25 @@ public partial class MainViewModel : ViewModelBase
     if(latest is null)
       return;
 
-    var targetVersion = latest.Version;
+    await UpdateToVersion(latest, isManualPackage: false);
+  }
+
+  private async Task UpdateFromManualPackage()
+  {
+    var package = _aresUpdater.GetManualUpdatePackage();
+    if(package is null)
+    {
+      Error = "No compatible ARES package was found in the Offline folder.";
+      return;
+    }
+
+    await UpdateToVersion(package, isManualPackage: true);
+  }
+
+  private async Task UpdateToVersion(AresRelease release, bool isManualPackage)
+  {
+    var currentVersion = _aresBinaryManager.CurrentVersion;
+    var targetVersion = release.Version;
 
     if(RequiresUpdateConfirmation(currentVersion, targetVersion))
     {
@@ -383,7 +392,7 @@ public partial class MainViewModel : ViewModelBase
       {
         CurrentVersion = currentVersion ?? targetVersion,
         TargetVersion = targetVersion,
-        ReleaseNotes = latest.ReleaseNotes ?? "",
+        ReleaseNotes = isManualPackage ? "Using the ARES package in the Offline folder." : release.ReleaseNotes ?? "",
         HasSnapshot = hasSnapshot
       });
 
@@ -406,7 +415,10 @@ public partial class MainViewModel : ViewModelBase
     try
     {
       Error = "";
-      await _aresUpdater.Update(targetVersion);
+      if(isManualPackage)
+        await _aresUpdater.UpdateFromManualPackage();
+      else
+        await _aresUpdater.Update(targetVersion);
     }
     catch(Exception e)
     {
@@ -473,116 +485,73 @@ public partial class MainViewModel : ViewModelBase
   private static bool RequiresUpdateConfirmation(SemanticVersion? currentVersion, SemanticVersion? targetVersion)
   {
     if(currentVersion is null || targetVersion is null)
-    {
       return false;
-    }
 
     if(targetVersion < currentVersion)
-    {
       return true;
-    }
 
     if(targetVersion.Major > currentVersion.Major)
-    {
       return true;
-    }
 
     return targetVersion.Major == currentVersion.Major && targetVersion.Minor > currentVersion.Minor;
   }
 
   [Reactive]
   public partial bool AresConditionChecked { get; private set; }
-
   [Reactive]
   public partial bool ConflictsResolved { get; private set; }
-
   [Reactive]
   public partial bool ButtonEnabled { get; private set; }
-
   [Reactive]
   public partial bool LauncherUpdateInProgress { get; private set; }
-
   [Reactive]
   public partial bool ProcessOwnerConflict { get; private set; }
-
-  public AresState AresState => _aresState.Value;
-
-  public IReactiveCommand? ButtonCommand => _buttonCommand.Value;
-
-  public string ButtonText => _buttonText.Value;
-
-  public IReactiveCommand? AuxButtonCommand => _auxButtonCommand.Value;
-
-  public object? AuxButtonContent => _auxButtonContent.Value;
-
-  public bool LauncherReady => _launcherReady.Value;
-
-  public ConfigurationOverviewViewModel Overview { get; }
-  public ConfigurationEditorViewModel Editor { get; }
-
-  [Reactive]
-  public partial string? Error { get; private set; }
-
-  public bool ShowDisclaimer => _showDisclaimer.Value;
-
-  public string? UpdateStepDescription => _updateStepDescription.Value;
-
-  public UpdateStep CurrentUpdateStep => _currentUpdateStep.Value;
-
-  public double Progress => _progress.Value;
-
   [Reactive]
   public partial bool AresPresent { get; private set; }
-
   [Reactive]
   public partial DatabaseStatus DatabaseStatus { get; private set; }
-
   [Reactive]
   public partial string InstalledAresVersion { get; private set; }
-
   [Reactive]
   public partial string AvailableAresUpdateVersion { get; private set; }
-
-  public string AresStateDescription => _aresStateDescription.Value;
-
-  public int AresComponentsRunning => _aresComponentsRunning.Value;
-
-  public bool UpdateInProgress => _updateInProgress.Value;
-
-  public bool UpdateAvailable => _updateAvailable.Value; 
-
-  public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
-
-  public AresRelease[] AvailableAresVersions { get; set; }
-
+  [Reactive]
+  public partial string ManualUpdateVersion { get; private set; }
   [Reactive]
   public partial SemanticVersion[]? AvailableLauncherVersions { get; private set; }
-
+  [Reactive]
+  public partial string? Error { get; private set; }
+  public AresState AresState => _aresState.Value;
+  public IReactiveCommand? ButtonCommand => _buttonCommand.Value;
+  public string ButtonText => _buttonText.Value;
+  public IReactiveCommand? AuxButtonCommand => _auxButtonCommand.Value;
+  public object? AuxButtonContent => _auxButtonContent.Value;
+  public bool LauncherReady => _launcherReady.Value;
+  public ConfigurationOverviewViewModel Overview { get; }
+  public ConfigurationEditorViewModel Editor { get; }
+  public bool ShowDisclaimer => _showDisclaimer.Value;
+  public string? UpdateStepDescription => _updateStepDescription.Value;
+  public UpdateStep CurrentUpdateStep => _currentUpdateStep.Value;
+  public double Progress => _progress.Value;
+  public string AresStateDescription => _aresStateDescription.Value;
+  public int AresComponentsRunning => _aresComponentsRunning.Value;
+  public bool UpdateInProgress => _updateInProgress.Value;
+  public bool UpdateAvailable => _updateAvailable.Value;
+  public bool ManualUpdateAvailable => _manualUpdateAvailable.Value;
+  public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
+  public AresRelease[] AvailableAresVersions { get; set; }
   public ReactiveCommand<Unit, Unit> StartAresCommand { get; }
-
   public ReactiveCommand<Unit, Unit> StopAresCommand { get; }
-
   public ReactiveCommand<Unit, Unit> UpdateDatabaseCommand { get; }
-
   public ReactiveCommand<Unit, Unit> UpdateAresCommand { get; }
-
+  public ReactiveCommand<Unit, Unit> ManualUpdateAresCommand { get; }
   public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
-
   public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
-
   public ReactiveCommand<Unit, Unit> OpenLauncherReleasePageCommand { get; }
-
   public ReactiveCommand<Unit, Unit> ResolveConflictsCommand { get; }
-
   public ReactiveCommand<Unit, Unit> CheckForUpdate { get; }
-
   public Interaction<Unit, Unit> ConflictDialog { get; }
-
   public Interaction<IReadOnlyList<PyAresProcessInfo>, bool> PyAresOrphansDialog { get; }
-
   public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; }
-
   public bool ShowProgressBar => _showProgressBar.Value;
-
   public PyAresConfigurationViewModel PyAresConfig { get; }
 }
