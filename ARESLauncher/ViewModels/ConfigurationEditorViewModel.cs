@@ -49,7 +49,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresDataPath = string.Empty;
     EditableAresServiceProcessName = string.Empty;
     EditableAresUiProcessName = string.Empty;
-    EditableInstalledAresLayout = AresReleaseLayout.SplitUiAndService;
+    EditableInstalledAresLayout = AresReleaseLayout.UnifiedUiOnly;
     
     var canInstall = this.WhenAnyValue(
       x => x.SelectedRelease,

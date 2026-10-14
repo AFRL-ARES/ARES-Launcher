@@ -186,11 +186,7 @@ public partial class MainViewModel : ViewModelBase
 
         var layout = _aresBinaryManager.CurrentLayout;
         var fullyRunning = layout == AresReleaseLayout.UnifiedUiOnly ? isRunning >= 1 : isRunning == 2;
-        var partiallyRunning = layout == AresReleaseLayout.SplitUiAndService && isRunning == 1;
 
-        if(partiallyRunning)
-          return AresState.OneRunning;
-        
         if(fullyRunning)
           return AresState.BothRunning;
 
@@ -198,7 +194,9 @@ public partial class MainViewModel : ViewModelBase
           return AresState.NeedsInstall;
 
         if(dbStatus != DatabaseStatus.UpToDate)
-          return AresState.NeedsDbUpdate;
+          return dbStatus == DatabaseStatus.Error
+            ? AresState.DatabaseError
+            : AresState.NeedsDbUpdate;
 
         if(processOwnerConflict)
           return AresState.ProcessOwnerConflict;
@@ -217,6 +215,7 @@ public partial class MainViewModel : ViewModelBase
             AresState.BothRunning => "Stop",
             AresState.Ready => "Start",
             AresState.NeedsDbUpdate => "Update DB",
+            AresState.DatabaseError => "Retry",
             AresState.NeedsInstall => "Install",
             AresState.Updating => "Updating...",
             AresState.ProcessOwnerConflict => "Conflict",
@@ -234,6 +233,7 @@ public partial class MainViewModel : ViewModelBase
             AresState.BothRunning => StopAresCommand,
             AresState.Ready => StartAresCommand,
             AresState.NeedsDbUpdate => UpdateDatabaseCommand,
+            AresState.DatabaseError => RefreshCommand,
             AresState.NeedsInstall => UpdateAresCommand,
             AresState.Updating => null,
             AresState.ProcessOwnerConflict => null,
@@ -250,6 +250,7 @@ public partial class MainViewModel : ViewModelBase
         AresState.BothRunning => "Globe",
         AresState.Ready => null,
         AresState.NeedsDbUpdate => null,
+        AresState.DatabaseError => null,
         AresState.NeedsInstall => null,
         AresState.Updating => null,
         AresState.ProcessOwnerConflict => null,
@@ -265,6 +266,7 @@ public partial class MainViewModel : ViewModelBase
         AresState.BothRunning => OpenBrowserCommand,
         AresState.Ready => null,
         AresState.NeedsDbUpdate => null,
+        AresState.DatabaseError => null,
         AresState.NeedsInstall => null,
         AresState.Updating => null,
         AresState.ProcessOwnerConflict => null,
@@ -280,6 +282,7 @@ public partial class MainViewModel : ViewModelBase
         AresState.BothRunning => "ARES is running",
         AresState.Ready => "ARES is ready",
         AresState.NeedsDbUpdate => "Database out of date",
+        AresState.DatabaseError => "Database check failed",
         AresState.NeedsInstall => "Ready to install",
         AresState.Updating => "Update in progress",
         AresState.ProcessOwnerConflict => "ARES process is owned by other user",
@@ -297,7 +300,9 @@ public partial class MainViewModel : ViewModelBase
       .ToProperty(this, vm => vm.ShowProgressBar);
 
     _launcherReady = this
-      .WhenAnyValue(vm => vm.AresConditionChecked, vm => vm.ConflictsResolved, vm => vm.AresState, (chk, resolved, state) => chk && resolved && state != AresState.Updating)
+      .WhenAnyValue(vm => vm.AresConditionChecked, 
+      vm => vm.ConflictsResolved, 
+      vm => vm.AresState, (chk, resolved, state) => chk && resolved && state != AresState.Updating)
       .ToProperty(this, vm => vm.LauncherReady);
 
     _showDisclaimer = this
@@ -326,32 +331,36 @@ public partial class MainViewModel : ViewModelBase
   private async Task CheckAresCondition()
   {
     AresConditionChecked = false;
+    Error = "";
 
-    await _aresBinaryManager.Refresh();
-    InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
-    AresPresent = _aresBinaryManager.CurrentVersion is not null;
-
-    AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
-    AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
-    AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
-
-    if(!AresPresent)
+    try
     {
-      AresConditionChecked = true;
-      return;
-    }
+      await _aresBinaryManager.Refresh();
+      InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
+      AresPresent = _aresBinaryManager.CurrentVersion is not null;
 
-    await _databaseManager.Refresh();
-    DatabaseStatus = _databaseManager.DatabaseStatus;
-    if(DatabaseStatus != DatabaseStatus.UpToDate)
+      AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
+      AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
+      AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
+
+      if(!AresPresent)
+        return;
+
+      await _databaseManager.Refresh();
+      DatabaseStatus = _databaseManager.DatabaseStatus;
+      if(DatabaseStatus == DatabaseStatus.Error)
+        Error = "A database error has occured";
+    }
+    catch(Exception e)
+    {
+      DatabaseStatus = DatabaseStatus.Error;
+      Error = $"Unable to check the ARES installation: {e.Message}";
+    }
+    finally
     {
       AresConditionChecked = true;
       this.RaisePropertyChanged(nameof(UpdateAvailable));
-      return;
     }
-
-    AresConditionChecked = true;
-    this.RaisePropertyChanged(nameof(UpdateAvailable));
   }
 
   private async Task UpdateAres()

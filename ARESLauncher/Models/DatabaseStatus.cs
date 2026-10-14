@@ -4,5 +4,6 @@ public enum DatabaseStatus
 {
   NonExistent,
   Outdated,
-  UpToDate
+  UpToDate,
+  Error
 }

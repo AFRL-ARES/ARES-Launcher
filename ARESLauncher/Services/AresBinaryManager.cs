@@ -34,7 +34,7 @@ public class AresBinaryManager : IAresBinaryManager
   public AppSettingsService? ServiceSettings { get; private set; }
   public AppSettingsUi? UiSettings { get; private set; }
   public AresSource? CurrentSource { get; private set; }
-  public AresReleaseLayout CurrentLayout { get; private set; } = AresReleaseLayout.SplitUiAndService;
+  public AresReleaseLayout CurrentLayout { get; private set; } = AresReleaseLayout.UnifiedUiOnly;
 
   public Task Refresh()
   {
@@ -47,17 +47,11 @@ public class AresBinaryManager : IAresBinaryManager
     UiSettings =
       TryLoadAppSettings<AppSettingsUi>(Path.Combine(_configurationService.Current.UiBinaryPath,
         "appsettings.ui.json"));
-    ServiceSettings = CurrentLayout == AresReleaseLayout.SplitUiAndService
-      ? TryLoadAppSettings<AppSettingsService>(Path.Combine(_configurationService.Current.ServiceBinaryPath,
-        "appsettings.aresservice.json"))
-      : null;
 
     if(_logger.IsEnabled(LogLevel.Debug))
     {
       if(UiSettings is null)
         _logger.LogDebug("Ui settings not found in {}", _configurationService.Current.UiBinaryPath);
-      if(CurrentLayout == AresReleaseLayout.SplitUiAndService && ServiceSettings is null)
-        _logger.LogDebug("Service settings not found in {}", _configurationService.Current.ServiceBinaryPath);
     }
 
     if(uiMetadata is not null && serviceMetadata is not null)

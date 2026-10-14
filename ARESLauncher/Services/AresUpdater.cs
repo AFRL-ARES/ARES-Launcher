@@ -308,8 +308,6 @@ public class AresUpdater : IAresUpdater
       serviceExecutable = Path.ChangeExtension(serviceExecutable, "exe");
     }
 
-    return File.Exists(serviceExecutable)
-      ? AresReleaseLayout.SplitUiAndService
-      : AresReleaseLayout.UnifiedUiOnly;
+    return AresReleaseLayout.UnifiedUiOnly;
   }
 }

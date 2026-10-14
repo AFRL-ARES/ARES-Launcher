@@ -92,6 +92,7 @@ internal sealed class FakeCertificateManager : ICertificateManager
 internal sealed class FakeDatabaseManager : IDatabaseManager
 {
   public DatabaseStatus DatabaseStatus { get; set; } = DatabaseStatus.UpToDate;
+  public string? LastError { get; set; }
   public int RefreshCallCount { get; private set; }
   public int RunMigrationsCallCount { get; private set; }
   public int CreateSnapshotCallCount { get; private set; }
@@ -144,7 +145,7 @@ internal sealed class FakeAresBinaryManager : IAresBinaryManager
   public AppSettingsService? ServiceSettings => null;
   public AppSettingsUi? UiSettings => null;
   public AresSource? CurrentSource => null;
-  public AresReleaseLayout CurrentLayout { get; set; } = AresReleaseLayout.SplitUiAndService;
+  public AresReleaseLayout CurrentLayout { get; set; } = AresReleaseLayout.UnifiedUiOnly;
 
   public Task Refresh()
   {

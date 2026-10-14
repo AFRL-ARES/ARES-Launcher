@@ -239,8 +239,6 @@ public class AresUpdaterTests
 
       var metadata = BinaryMetadataHelper.ReadMetadata(uiDir);
       Assert.That(metadata, Is.Not.Null);
-      Assert.That(metadata!.Layout, Is.EqualTo(AresReleaseLayout.SplitUiAndService));
-      Assert.That(configuration.Current.InstalledAresLayout, Is.EqualTo(AresReleaseLayout.SplitUiAndService));
     }
     finally
     {
