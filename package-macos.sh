@@ -143,7 +143,7 @@ echo "Packaged $APP_NAME successfully."
 codesign --deep \
     --force \
     --verbose \
-    --sign - \
+    --sign "-" \
     "$APP_NAME"
 
 codesign --verify \
