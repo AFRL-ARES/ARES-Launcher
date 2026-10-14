@@ -130,6 +130,63 @@ public class AresUpdater : IAresUpdater
     await ApplyLocalSettings();
   }
 
+  public AresRelease? GetManualUpdatePackage()
+  {
+    var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
+    if(!Directory.Exists(offlinePath))
+      return null;
+
+    return Directory.EnumerateFiles(offlinePath, "*.zip")
+      .Select(path => new { Path = path, IsValid = AresReleaseArchive.TryGetVersion(path, out var version), Version = version })
+      .Where(package => package.IsValid && package.Version is not null)
+      .OrderByDescending(package => package.Version)
+      .Select(package => new AresRelease { Version = package.Version!, IsBeta = false })
+      .FirstOrDefault();
+  }
+
+  public async Task UpdateFromManualPackage()
+  {
+    var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
+    var package = Directory.Exists(offlinePath)
+      ? Directory.EnumerateFiles(offlinePath, "*.zip")
+        .Select(path => new { Path = path, IsValid = AresReleaseArchive.TryGetVersion(path, out var version), Version = version })
+        .Where(candidate => candidate.IsValid && candidate.Version is not null)
+        .OrderByDescending(candidate => candidate.Version)
+        .FirstOrDefault()
+      : null;
+
+    if(package is null)
+      throw new InvalidOperationException("No compatible ARES package was found in the Offline folder.");
+
+    var uiDir = _configurationService.Current.UiBinaryPath;
+    var serviceDir = _configurationService.Current.ServiceBinaryPath;
+    _currentUpdateStepSubject.OnNext(UpdateStep.Other);
+    _updateStepDescriptionSubject.OnNext("Cleaning up the previous version.");
+
+    if(Directory.Exists(uiDir))
+      Directory.Delete(uiDir, true);
+    if(Directory.Exists(serviceDir))
+      Directory.Delete(serviceDir, true);
+
+    try
+    {
+      _updateStepDescriptionSubject.OnNext("Unpacking the local package.");
+      _updateProgressSubject.OnNext(1.0);
+      await Unpacker.Unpack(package.Path, uiDir);
+      var layout = DetectInstalledLayout(uiDir);
+      _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
+      BinaryMetadataHelper.WriteMetadata(uiDir, _configurationService.Current.CurrentAresRepo, package.Version!, layout);
+    }
+    catch(Exception)
+    {
+      _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
+      _updateStepDescriptionSubject.OnNext("");
+      throw;
+    }
+
+    await ApplyLocalSettings();
+  }
+
   public async Task ApplyLocalSettings()
   {
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
@@ -154,20 +211,15 @@ public class AresUpdater : IAresUpdater
     {
       _updateStepDescriptionSubject.OnNext("Checking for offline package.");
       _currentUpdateStepSubject.OnNext(UpdateStep.Other);
-      var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
-      if(Directory.Exists(offlinePath))
+      var package = GetManualUpdatePackage();
+      if(package is not null)
       {
-        var zipPath = Directory.EnumerateFiles(offlinePath, "*.zip").FirstOrDefault();
-
-        if(zipPath is not null)
-        {
-          _updateStepDescriptionSubject.OnNext("Offline installation found, preparing to install.");
-          await InstallOffline(zipPath);
-          return;
-        }
-
-        _updateStepDescriptionSubject.OnNext("No Offline Install Found");
+        _updateStepDescriptionSubject.OnNext("Offline installation found, preparing to install.");
+        await UpdateFromManualPackage();
+        return;
       }
+
+      _updateStepDescriptionSubject.OnNext("No Offline Install Found");
     }
 
     _updateStepDescriptionSubject.OnNext("Checking version");

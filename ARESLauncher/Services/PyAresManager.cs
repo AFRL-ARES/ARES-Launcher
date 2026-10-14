@@ -296,7 +296,6 @@ public class PyAresManager : IPyAresManager
         var proc = Process.GetProcessById(entry.Pid);
         if(proc.HasExited)
           continue;
-        
 
         _attachedProcesses[entry.Name] = entry.Pid;
 
@@ -497,19 +496,18 @@ public class PyAresManager : IPyAresManager
     }
 
     var current = subject.Value ?? string.Empty;
-    var updated = string.IsNullOrEmpty(current)
-      ? line
-      : current + Environment.NewLine + line;
+    var updated = string.IsNullOrEmpty(current) ? line : current + Environment.NewLine + line;
 
     subject.OnNext(updated);
   }
 
   private static string BuildArguments(PyAresComponentConfig component)
   {
-    var args = new List<string>();
-
-    // Run Python unbuffered so print() output appears live
-    args.Add("-u");
+    var args = new List<string>
+    {
+      // Run Python unbuffered so print() output appears live
+      "-u"
+    };
 
     if(!string.IsNullOrWhiteSpace(component.EntryPoint))
       args.Add(component.EntryPoint);
@@ -565,12 +563,11 @@ public class PyAresManager : IPyAresManager
     }
 
     if(_componentTokens.TryGetValue(name, out var existingCts))
-    {
       _ = RequestComponentCancellationAsync(name, existingCts);
-    }
 
     return Task.CompletedTask;
   }
+
 
   private async Task RequestComponentCancellationAsync(string name, CancellationTokenSource cancellationTokenSource)
   {
@@ -653,14 +650,11 @@ public class PyAresManager : IPyAresManager
     {
       var entry = state.Components.FirstOrDefault(c => c.Name == name);
       if(entry is not null && (!expectedPid.HasValue || entry.Pid == expectedPid.Value))
-      {
         state.Components.Remove(entry);
-      }
     });
   }
 
   public IObservable<bool> AnyPyAresRunning { get; }
   public IObservable<IReadOnlyList<PyAresComponentStatus>> ComponentStatuses { get; }
-
   private sealed record StartedPythonProcess(int ProcessId, Task Task);
 }

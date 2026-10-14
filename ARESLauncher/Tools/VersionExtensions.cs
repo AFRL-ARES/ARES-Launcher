@@ -1,6 +1,7 @@
 ﻿using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace ARESLauncher.Tools;
@@ -29,11 +30,25 @@ public static class VersionExtensions
 
   public static SemanticVersion GetVersionFromZipName(string fileName)
   {
-    var match = AresVersionRegex.VersionRegex().Match(fileName);
+    var match = AresVersionRegex.VersionRegex().Match(RemovePlatformBundleSuffix(fileName));
 
-    if(match.Success && Version.TryParse(match.Groups[1].Value, out var v))
-      return new SemanticVersion(v.Major, v.Minor, v.Build);
+    if(match.Success && SemanticVersion.TryParse(match.Groups[1].Value, out var version))
+      return version;
 
     throw new ArgumentException($"Invalid version in filename: {fileName}");
+  }
+
+  private static string RemovePlatformBundleSuffix(string fileName)
+  {
+    var name = Path.GetFileNameWithoutExtension(fileName);
+    string[] bundleSuffixes = ["-macos-arm64", "-macos-x64", "-windows", "-linux", "-macos"];
+
+    foreach(var suffix in bundleSuffixes)
+    {
+      if(name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        return name[..^suffix.Length];
+    }
+
+    return name;
   }
 }

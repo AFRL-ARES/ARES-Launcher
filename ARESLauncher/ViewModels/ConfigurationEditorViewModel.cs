@@ -23,8 +23,6 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   private readonly IReadOnlyList<DatabaseProvider> _databaseProviders;
   private readonly IReadOnlyList<AresReleaseLayout> _releaseLayouts;
 
-  public ObservableCollection<PyAresComponentEditorViewModel> PyAresComponents { get; } = new();
-
   public ConfigurationEditorViewModel(IAppConfigurationService configurationService, 
     IAppSettingsUpdater appSettingsUpdater,
     IAresUpdater aresUpdater,
@@ -70,25 +68,20 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     var newRepository = new AresSourceEditorViewModel(string.Empty, string.Empty);
     AvailableRepositories.Add(newRepository);
     SelectedAvailableRepository = newRepository;
-
     SelectedCurrentRepository ??= newRepository;
   }
 
   private void RemoveSelectedRepository()
   {
     if(SelectedAvailableRepository is null)
-    {
       return;
-    }
 
     var repositoryToRemove = SelectedAvailableRepository;
     var index = AvailableRepositories.IndexOf(repositoryToRemove);
     AvailableRepositories.Remove(repositoryToRemove);
 
     if(repositoryToRemove == SelectedCurrentRepository)
-    {
       SelectedCurrentRepository = AvailableRepositories.FirstOrDefault();
-    }
 
     if(AvailableRepositories.Count == 0)
     {
@@ -132,13 +125,10 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
       if(validRepositories.Length > 0)
       {
         if(SelectedCurrentRepository is not null && IsValidRepository(SelectedCurrentRepository))
-        {
           configuration.CurrentAresRepo = SelectedCurrentRepository.ToAresSource();
-        }
+        
         else
-        {
           configuration.CurrentAresRepo = validRepositories[0];
-        }
       }
     });
 
@@ -263,86 +253,58 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
 
   public event EventHandler? ConfigurationSaved;
   public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; } = new();
-
   public IReadOnlyList<DatabaseProvider> DatabaseProviders => _databaseProviders;
   public IReadOnlyList<AresReleaseLayout> ReleaseLayouts => _releaseLayouts;
-
   public ObservableCollection<AresSourceEditorViewModel> AvailableRepositories { get; }
-
   [Reactive]
   public partial AresRelease[]? AvailableReleases { get; private set; }
-
   [Reactive]
   public partial AresRelease? SelectedRelease { get; set; }
-
   [Reactive]
   public partial string? InstalledAresVersion { get; private set; }
-
   public ReactiveCommand<Unit, Unit> UpdateAresCommand { get; }
-
   [Reactive]
   public partial bool UpdateInProgress { get; private set; }
-
   [Reactive]
   public partial string? UpdateError { get; private set; }
-
   [Reactive]
   public partial AresSourceEditorViewModel? SelectedAvailableRepository { get; set; }
-
   [Reactive]
   public partial AresSourceEditorViewModel? SelectedCurrentRepository { get; set; }
-
   [Reactive]
   public partial string EditableUiBinaryPath { get; set; }
-
   [Reactive]
   public partial string EditableServiceBinaryPath { get; set; }
-
   [Reactive]
   public partial string EditableSqliteDatabasePath { get; set; }
-
   [Reactive]
   public partial string EditableSqlServerConnectionString { get; set; }
-
   [Reactive]
   public partial string EditablePostgresConnectionString { get; set; }
-
   [Reactive]
   public partial string EditableServiceEndpoint { get; set; }
-
   [Reactive]
   public partial string EditableUiEndpoint { get; set; }
-
   [Reactive]
   public partial DatabaseProvider EditableDatabaseProvider { get; set; }
-
   [Reactive]
   public partial string EditableGitToken { get; set; }
-
   [Reactive]
   public partial string EditableAresDataPath { get; set; }
-
   [Reactive]
   public partial string EditableAresServiceProcessName { get; set; }
-
   [Reactive]
   public partial string EditableAresUiProcessName { get; set; }
-
   [Reactive]
   public partial AresReleaseLayout EditableInstalledAresLayout { get; set; }
-
   [Reactive]
   public partial bool EditableIncludeBeta { get; set; }
-
   [Reactive]
   public partial bool EditableDemoMode { get; set; }
-
   [Reactive]
   public partial bool ShowAdvancedOptions { get; set; }
-
   public ReactiveCommand<Unit, Unit> AddRepositoryCommand { get; }
-
   public ReactiveCommand<Unit, Unit> RemoveSelectedRepositoryCommand { get; }
-
   public ReactiveCommand<Unit, Unit> SaveConfigurationCommand { get; }
+  public ObservableCollection<PyAresComponentEditorViewModel> PyAresComponents { get; } = new();
 }

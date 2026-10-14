@@ -95,6 +95,10 @@ When a new ARES release is published with a higher version number, the launcher 
 
 The launcher does *not* automatically update itself. If you encounter a launcher‑specific issue, check its Releases page for a newer version.
 
+### Manual ARES Updates
+
+For an offline or manually supplied ARES update, create an `Offline` folder beside the launcher executable and place a release ZIP for the current platform inside it. The ZIP filename must retain the ARES release naming convention, including its version and platform suffix (for example, `ARES-v1.2.3-windows.zip`). The launcher will show an **Install Local Package** action on the Overview tab; selecting it installs the local package even when it is not newer than the installed version.
+
 ## Custom ARES Repositories
 
 By default, the launcher uses the official repository:
