@@ -67,9 +67,6 @@ public class AresStarter : IAresStarter
 
     if(!_aresUiRunningSubject.Value)
       _uiTask = StartUi(_cancellationTokenSource.Token, demoMode) ?? Task.CompletedTask;
-
-    if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService && !_aresServiceRunningSubject.Value)
-      _serviceTask = StartService(_cancellationTokenSource.Token) ?? Task.CompletedTask;
   }
 
   public async Task Stop()

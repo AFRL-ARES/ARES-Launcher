@@ -6,6 +6,7 @@ public enum AresState
   BothRunning,
   Ready,
   NeedsDbUpdate,
+  DatabaseError,
   NeedsInstall,
   Updating,
   ProcessOwnerConflict

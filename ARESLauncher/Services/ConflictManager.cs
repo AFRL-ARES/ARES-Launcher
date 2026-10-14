@@ -30,19 +30,11 @@ public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService
   public async Task Kill()
   {
     var uiProcess = GetUiProcess();
-    var serviceProcess = _aresBinaryManager.CurrentLayout == AresReleaseLayout.SplitUiAndService
-      ? GetServiceProcess()
-      : null;
+
     if(uiProcess is not null)
     {
       uiProcess.Kill();
       await uiProcess.WaitForExitAsync();
-    }
-
-    if(serviceProcess is not null)
-    {
-      serviceProcess.Kill();
-      await serviceProcess.WaitForExitAsync();
     }
   }
 

@@ -194,16 +194,6 @@ public partial class MainViewModel : ViewModelBase
       if(updateStep != UpdateStep.Idle)
         return AresState.Updating;
 
-      var layout = _aresBinaryManager.CurrentLayout;
-      var fullyRunning = layout == AresReleaseLayout.UnifiedUiOnly ? isRunning >= 1 : isRunning == 2;
-      var partiallyRunning = layout == AresReleaseLayout.SplitUiAndService && isRunning == 1;
-
-      if(partiallyRunning)
-        return AresState.OneRunning;
-
-      if(fullyRunning)
-        return AresState.BothRunning;
-
       if(!isPresent)
         return AresState.NeedsInstall;
 

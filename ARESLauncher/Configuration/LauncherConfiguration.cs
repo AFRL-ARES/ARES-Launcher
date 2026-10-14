@@ -35,7 +35,7 @@ public class LauncherConfiguration
   public string CertificatePath { get; } = Path.Combine(_appPath, "Data", "AresOS.pfx");
   public string CertificatePassword { get; } = "SecurePassword";
   public string GitToken { get; set; } = "";
-  public AresReleaseLayout InstalledAresLayout { get; set; } = AresReleaseLayout.SplitUiAndService;
+  public AresReleaseLayout InstalledAresLayout { get; set; } = AresReleaseLayout.UnifiedUiOnly;
 
   public string AresServiceProcessName { get; set; } = "AresService";
   public string AresUiProcessName { get; set; } = "UI";
