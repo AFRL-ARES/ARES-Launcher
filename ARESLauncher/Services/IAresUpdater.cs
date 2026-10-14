@@ -17,6 +17,10 @@ public interface IAresUpdater
 
   Task Update(SemanticVersion version);
 
+  AresRelease? GetManualUpdatePackage();
+
+  Task UpdateFromManualPackage();
+
   Task UpdateLatest();
 
   Task CreateSnapshot(SemanticVersion version);

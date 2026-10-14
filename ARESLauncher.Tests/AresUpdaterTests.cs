@@ -207,6 +207,44 @@ public class AresUpdaterTests
   }
 
   [Test]
+  public async Task UpdateFromManualPackage_UsesCompatibleOfflinePackage()
+  {
+    var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
+    Directory.CreateDirectory(offlinePath);
+    var tempRoot = TestPaths.CreateTempDirectory();
+    var uiDir = Path.Combine(tempRoot, "ui");
+    var version = SemanticVersion.Parse("2.7.0-beta.6");
+    var archiveName = $"ARES-v{version.ToNormalizedString()}-{OsBundleNameGetter.GetAresName()}.zip";
+    var archivePath = TestArchives.CreateArchive(offlinePath, archiveName, ("manual.bin", "content"));
+
+    try
+    {
+      var downloader = new RecordingAresDownloader(null);
+      var updater = new AresUpdater(
+        downloader,
+        new FakeAppConfigurationService(new LauncherConfiguration { UiBinaryPath = uiDir, ServiceBinaryPath = uiDir }),
+        new FakeAppSettingsUpdater(),
+        new FakeCertificateManager(),
+        new FakeDatabaseManager(),
+        new FakeAresBinaryManager(),
+        NullLogger<AresUpdater>.Instance);
+
+      var package = updater.GetManualUpdatePackage();
+      await updater.UpdateFromManualPackage();
+
+      Assert.That(package?.Version, Is.EqualTo(version));
+      Assert.That(downloader.DownloadCallCount, Is.EqualTo(0));
+      Assert.That(File.Exists(Path.Combine(uiDir, "manual.bin")), Is.True);
+      Assert.That(BinaryMetadataHelper.ReadMetadata(uiDir)?.Version, Is.EqualTo(version.ToNormalizedString()));
+    }
+    finally
+    {
+      if(File.Exists(archivePath)) File.Delete(archivePath);
+      TestPaths.DeleteDirectoryIfExists(tempRoot);
+    }
+  }
+
+  [Test]
   public async Task Update_PersistsSplitLayout_WhenServiceExecutableExists()
   {
     var tempRoot = TestPaths.CreateTempDirectory();

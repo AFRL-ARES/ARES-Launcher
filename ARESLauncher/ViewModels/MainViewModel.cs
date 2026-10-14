@@ -39,6 +39,7 @@ public partial class MainViewModel : ViewModelBase
   private readonly ObservableAsPropertyHelper<double> _progress;
   private readonly ObservableAsPropertyHelper<bool> _showProgressBar;
   private readonly ObservableAsPropertyHelper<bool> _updateAvailable;
+  private readonly ObservableAsPropertyHelper<bool> _manualUpdateAvailable;
   private readonly ObservableAsPropertyHelper<bool> _launcherUpdateAvailable;
   private readonly ObservableAsPropertyHelper<bool> _updateInProgress;
   private readonly ObservableAsPropertyHelper<bool> _showDisclaimer;
@@ -92,6 +93,7 @@ public partial class MainViewModel : ViewModelBase
       await _aresStarter.Stop();
     });
     UpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateAres);
+    ManualUpdateAresCommand = ReactiveCommand.CreateFromTask(UpdateFromManualPackage);
     OpenBrowserCommand = ReactiveCommand.Create(browserOpener.Open);
     OpenLauncherReleasePageCommand = ReactiveCommand.CreateFromTask(CheckForUpdatedLauncher);
     UpdateConfirmationDialog = new Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse>();
@@ -160,6 +162,15 @@ public partial class MainViewModel : ViewModelBase
         return updateAvailable && runnin == 0 && updateStep == UpdateStep.Idle;
       })
       .ToProperty(this, vm => vm.UpdateAvailable);
+
+    _manualUpdateAvailable = this
+      .WhenAnyValue(x => x.ManualUpdateVersion, x => x.InstalledAresVersion, x => x.AresComponentsRunning, x => x.CurrentUpdateStep,
+        (manualVersion, installedVersion, running, updateStep) =>
+          !string.IsNullOrEmpty(manualVersion) &&
+          !string.Equals(manualVersion, installedVersion, StringComparison.OrdinalIgnoreCase) &&
+          running == 0 &&
+          updateStep == UpdateStep.Idle)
+      .ToProperty(this, vm => vm.ManualUpdateAvailable);
 
 
     _launcherUpdateAvailable = this
@@ -314,6 +325,7 @@ public partial class MainViewModel : ViewModelBase
     InstalledAresVersion = _aresBinaryManager.CurrentVersion?.ToNormalizedString() ?? string.Empty;
     AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
     AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
+    ManualUpdateVersion = _aresUpdater.GetManualUpdatePackage()?.Version.ToNormalizedString() ?? string.Empty;
     AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
   }
 
@@ -330,6 +342,7 @@ public partial class MainViewModel : ViewModelBase
 
     AvailableAresVersions = await _aresUpdater.GetAvailableVersions();
     AvailableAresUpdateVersion = AvailableAresVersions?.FirstOrDefault()?.Version.ToNormalizedString() ?? string.Empty;
+    ManualUpdateVersion = _aresUpdater.GetManualUpdatePackage()?.Version.ToNormalizedString() ?? string.Empty;
     AvailableLauncherVersions = await _launcherUpdater.GetAvailableVersions();
 
     if(!AresPresent)
@@ -360,7 +373,25 @@ public partial class MainViewModel : ViewModelBase
     if(latest is null)
       return;
 
-    var targetVersion = latest.Version;
+    await UpdateToVersion(latest, isManualPackage: false);
+  }
+
+  private async Task UpdateFromManualPackage()
+  {
+    var package = _aresUpdater.GetManualUpdatePackage();
+    if(package is null)
+    {
+      Error = "No compatible ARES package was found in the Offline folder.";
+      return;
+    }
+
+    await UpdateToVersion(package, isManualPackage: true);
+  }
+
+  private async Task UpdateToVersion(AresRelease release, bool isManualPackage)
+  {
+    var currentVersion = _aresBinaryManager.CurrentVersion;
+    var targetVersion = release.Version;
 
     if(RequiresUpdateConfirmation(currentVersion, targetVersion))
     {
@@ -371,7 +402,7 @@ public partial class MainViewModel : ViewModelBase
       {
         CurrentVersion = currentVersion ?? targetVersion,
         TargetVersion = targetVersion,
-        ReleaseNotes = latest.ReleaseNotes ?? "",
+        ReleaseNotes = isManualPackage ? "Using the ARES package in the Offline folder." : release.ReleaseNotes ?? "",
         HasSnapshot = hasSnapshot
       });
 
@@ -394,7 +425,10 @@ public partial class MainViewModel : ViewModelBase
     try
     {
       Error = "";
-      await _aresUpdater.Update(targetVersion);
+      if(isManualPackage)
+        await _aresUpdater.UpdateFromManualPackage();
+      else
+        await _aresUpdater.Update(targetVersion);
     }
     catch(Exception e)
     {
@@ -491,6 +525,8 @@ public partial class MainViewModel : ViewModelBase
   [Reactive]
   public partial string AvailableAresUpdateVersion { get; private set; }
   [Reactive]
+  public partial string ManualUpdateVersion { get; private set; }
+  [Reactive]
   public partial SemanticVersion[]? AvailableLauncherVersions { get; private set; }
   [Reactive]
   public partial string? Error { get; private set; }
@@ -510,12 +546,14 @@ public partial class MainViewModel : ViewModelBase
   public int AresComponentsRunning => _aresComponentsRunning.Value;
   public bool UpdateInProgress => _updateInProgress.Value;
   public bool UpdateAvailable => _updateAvailable.Value;
+  public bool ManualUpdateAvailable => _manualUpdateAvailable.Value;
   public bool LauncherUpdateAvailable => _launcherUpdateAvailable.Value;
   public AresRelease[] AvailableAresVersions { get; set; }
   public ReactiveCommand<Unit, Unit> StartAresCommand { get; }
   public ReactiveCommand<Unit, Unit> StopAresCommand { get; }
   public ReactiveCommand<Unit, Unit> UpdateDatabaseCommand { get; }
   public ReactiveCommand<Unit, Unit> UpdateAresCommand { get; }
+  public ReactiveCommand<Unit, Unit> ManualUpdateAresCommand { get; }
   public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
   public ReactiveCommand<Unit, Unit> OpenBrowserCommand { get; }
   public ReactiveCommand<Unit, Unit> OpenLauncherReleasePageCommand { get; }
