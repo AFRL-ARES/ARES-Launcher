@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 set -euo pipefail
 
@@ -173,4 +172,3 @@ hdiutil create \
 rm -rf "$STAGING_DIR"
 
 echo "Universal 2 DMG ($DMG_FILE) created successfully."
-```
