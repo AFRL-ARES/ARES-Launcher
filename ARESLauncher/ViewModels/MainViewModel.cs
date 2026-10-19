@@ -191,6 +191,12 @@ public partial class MainViewModel : ViewModelBase
     vm => vm.ProcessOwnerConflict,
     (isRunning, isPresent, dbStatus, updateStep, processOwnerConflict) =>
     {
+      var layout = _aresBinaryManager.CurrentLayout;
+      var fullyRunning = layout == AresReleaseLayout.UnifiedUiOnly ? isRunning >= 1 : isRunning == 2;
+
+      if(fullyRunning)
+        return AresState.BothRunning;
+
       if(updateStep != UpdateStep.Idle)
         return AresState.Updating;
 
