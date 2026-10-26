@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 using ARESLauncher.Models;
 using NuGet.Versioning;
 
@@ -15,7 +16,7 @@ public static class BinaryMetadataHelper
     WriteIndented = true
   };
 
-  public static void WriteMetadata(string directory, AresSource source, SemanticVersion version, AresReleaseLayout layout)
+  public static void WriteMetadata(string directory, AresSource source, SemanticVersion version)
   {
     if (string.IsNullOrWhiteSpace(directory)) return;
 
@@ -23,8 +24,7 @@ public static class BinaryMetadataHelper
     var metadata = new AresBinaryMetadata
     {
       Source = source,
-      Version = version.ToNormalizedString(),
-      Layout = layout
+      Version = version.ToNormalizedString()
     };
 
     try
@@ -40,18 +40,22 @@ public static class BinaryMetadataHelper
     }
   }
 
-  public static AresBinaryMetadata? ReadMetadata(string directory)
+  public static async Task<AresBinaryMetadata?> ReadMetadata(string directory)
   {
-    if (string.IsNullOrWhiteSpace(directory)) return null;
+    if(string.IsNullOrWhiteSpace(directory)) 
+      return null;
+    
     var path = Path.Combine(directory, MetadataFileName);
-    if (!File.Exists(path)) return null;
+    
+    if(!File.Exists(path)) 
+      return null;
 
     try
     {
-      var json = File.ReadAllText(path);
+      var json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
       return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<AresBinaryMetadata>(json, SerializerOptions);
     }
-    catch (Exception)
+    catch(Exception)
     {
       return null;
     }

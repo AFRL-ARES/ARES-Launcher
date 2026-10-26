@@ -68,11 +68,7 @@ internal sealed class FakeAppSettingsUpdater : IAppSettingsUpdater
 {
   public int UpdateAllCallCount { get; private set; }
 
-  public void Update(AresComponent component)
-  {
-  }
-
-  public void UpdateAll()
+  public void UpdateAresSettings()
   {
     UpdateAllCallCount++;
   }
@@ -143,16 +139,15 @@ internal sealed class FakeAresBinaryManager : IAresBinaryManager
 {
   public SemanticVersion? CurrentVersion => null;
   public AppSettingsService? ServiceSettings => null;
-  public AppSettingsUi? UiSettings => null;
+  public AppSettingsUi? AresSettings => null;
   public AresSource? CurrentSource => null;
-  public AresReleaseLayout CurrentLayout { get; set; } = AresReleaseLayout.UnifiedUiOnly;
 
   public Task Refresh()
   {
     return Task.CompletedTask;
   }
 
-  public void SetUiDataPath(Uri path)
+  public void SetDataPath(Uri path)
   {
   }
 

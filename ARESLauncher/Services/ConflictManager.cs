@@ -11,48 +11,26 @@ namespace ARESLauncher.Services;
 
 public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService _configurationService, IAresBinaryManager _aresBinaryManager) : IConflictManager
 {
-
-  public bool FindPotentialService()
+  public bool FindPotentialAres()
   {
-    if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.UnifiedUiOnly)
-      return false;
-
-    var process = GetServiceProcess();
-    return process is not null; ;
-  }
-
-  public bool FindPotentialUi()
-  {
-    var process = GetUiProcess();
+    var process = GetAresProcess();
     return process is not null;
   }
 
   public async Task Kill()
   {
-    var uiProcess = GetUiProcess();
+    var aresProcess = GetAresProcess();
 
-    if(uiProcess is not null)
+    if(aresProcess is not null)
     {
-      uiProcess.Kill();
-      await uiProcess.WaitForExitAsync();
+      aresProcess.Kill();
+      await aresProcess.WaitForExitAsync();
     }
   }
 
-  public void TakeOverService()
+  public void TakeOverAres()
   {
-    if(_aresBinaryManager.CurrentLayout == AresReleaseLayout.UnifiedUiOnly)
-      return;
-
-    var process = GetServiceProcess();
-    if(process is null)
-      return;
-
-    _aresStarter.TakeOwnershipService(process);
-  }
-
-  public void TakeOverUi()
-  {
-    var process = GetUiProcess();
+    var process = GetAresProcess();
 
     if(process is null)
       return;
@@ -69,16 +47,10 @@ public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService
     _aresStarter.TakeOwnershipUi(process);
   }
 
-  private Process? GetUiProcess()
+  private Process? GetAresProcess()
   {
-    var uiName = _configurationService.Current.AresUiProcessName;
-    return GetProcess(uiName);
-  }
-
-  private Process? GetServiceProcess()
-  {
-    var serviceName = _configurationService.Current.AresServiceProcessName;
-    return GetProcess(serviceName);
+    var aresName = _configurationService.Current.AresUiProcessName;
+    return GetProcess(aresName);
   }
 
   private static Process? GetProcess(string name)

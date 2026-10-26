@@ -197,19 +197,8 @@
                                Grid.Column="0"
                                Margin="0,0,0,8"
                                VerticalAlignment="Center"
-                               Text="Installed ARES layout:" />
-                    <ComboBox Grid.Row="10"
-                              Grid.Column="1"
-                              Margin="12,0,0,8"
-                              ItemsSource="{Binding ReleaseLayouts}"
-                              SelectedItem="{Binding EditableInstalledAresLayout, Mode=TwoWay}" />
-
-                    <TextBlock Grid.Row="11"
-                               Grid.Column="0"
-                               Margin="0,0,0,8"
-                               VerticalAlignment="Center"
                                Text="ARES UI process:" />
-                    <TextBox Grid.Row="11"
+                    <TextBox Grid.Row="10"
                              Grid.Column="1"
                              Margin="12,0,0,0"
                              Text="{Binding EditableAresUiProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

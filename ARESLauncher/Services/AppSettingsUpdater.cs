@@ -11,37 +11,7 @@ namespace ARESLauncher.Services;
 
 public class AppSettingsUpdater(IAppConfigurationService _configurationService, ILogger<AppSettingsUpdater> _logger) : IAppSettingsUpdater
 {
-  public void Update(AresComponent component)
-  {
-    if(component == AresComponent.Service &&
-       _configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly)
-    {
-      return;
-    }
-
-    switch(component)
-    {
-      case AresComponent.Ui:
-        UpdateUi();
-        return;
-      case AresComponent.Service:
-        UpdateService();
-        return;
-      default:
-        throw new ArgumentOutOfRangeException(nameof(component), component, null);
-    }
-  }
-
-  public void UpdateAll()
-  {
-    AresComponent[] components = _configurationService.Current.InstalledAresLayout == AresReleaseLayout.UnifiedUiOnly
-      ? [AresComponent.Ui]
-      : [AresComponent.Ui, AresComponent.Service];
-    foreach(var aresComponent in components)
-      Update(aresComponent);
-  }
-
-  private void UpdateUi()
+  public void UpdateAresSettings()
   {
     var path = _configurationService.Current.UiBinaryPath;
     path = Path.Combine(path, "appsettings.ui.json");
@@ -51,33 +21,11 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService, 
       return;
     }
 
-    var serviceUri = new Uri(_configurationService.Current.ServiceEndpoint);
-
     AppSettingsHelper.Update<AppSettingsUi>(path, appSettings =>
     {
       ApplyCommonSettings(appSettings);
       appSettings.RemoteServiceSettings ??= new RemoteServiceSettings();
-      appSettings.RemoteServiceSettings.ServerHost = serviceUri.Host;
-      appSettings.RemoteServiceSettings.ServerPort = serviceUri.Port;
-      UpdateKestrel(appSettings, AresComponent.Ui, _configurationService.Current);
-    });
-  }
-
-  private void UpdateService()
-  {
-    var path = _configurationService.Current.ServiceBinaryPath;
-    path = Path.Combine(path, "appsettings.aresservice.json");
-    if(!File.Exists(path))
-    {
-      _logger.LogWarning("Tried to update the Service settings but the settings file at {Path} was not found.", path);
-      return;
-    }
-
-    AppSettingsHelper.Update<AppSettingsService>(path, appSettings =>
-    {
-      ApplyCommonSettings(appSettings);
-      appSettings.AresDataPath = _configurationService.Current.AresDataPath;
-      UpdateKestrel(appSettings, AresComponent.Service, _configurationService.Current);
+      UpdateKestrel(appSettings, _configurationService.Current);
     });
   }
 
@@ -95,10 +43,9 @@ public class AppSettingsUpdater(IAppConfigurationService _configurationService, 
     appSettings.AresDataPath = _configurationService.Current.AresDataPath;
   }
 
-  private static void UpdateKestrel(AppSettingsBase settingsBase, AresComponent component,
-    LauncherConfiguration configuration)
+  private static void UpdateKestrel(AppSettingsBase settingsBase, LauncherConfiguration configuration)
   {
-    var endpoint = component == AresComponent.Ui ? configuration.UiEndpoint : configuration.ServiceEndpoint;
+    var endpoint = configuration.UiEndpoint;
 
     var uri = new Uri(endpoint);
 

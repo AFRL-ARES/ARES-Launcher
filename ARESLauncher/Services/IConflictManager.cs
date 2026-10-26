@@ -3,13 +3,8 @@
 namespace ARESLauncher.Services;
 public interface IConflictManager
 {
-  bool FindPotentialUi();
-  bool FindPotentialService();
-
-  void TakeOverUi();
-  void TakeOverService();
-
+  bool FindPotentialAres();
+  void TakeOverAres();
   Task Kill(); //._.
-
   public bool IsCurrentUserProcessOwner { get; set; }
 }

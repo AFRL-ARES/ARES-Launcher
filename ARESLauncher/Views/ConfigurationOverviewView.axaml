@@ -22,44 +22,35 @@
       <TextBlock Grid.Row="1"
                  Grid.Column="0"
                  Margin="0,0,0,8"
-                 Text="Service data path:" />
-      <TextBlock Grid.Row="1"
-                 Grid.Column="1"
-                 Margin="12,0,0,8"
-                 Text="{Binding ServiceDataPath}" />
-
-      <TextBlock Grid.Row="2"
-                 Grid.Column="0"
-                 Margin="0,0,0,8"
                  Text="SQLite database path:" />
-      <TextBlock Grid.Row="2"
+      <TextBlock Grid.Row="1"
                  Grid.Column="1"
                  Margin="12,0,0,8"
                  Text="{Binding SqliteDatabasePath}" />
 
-      <TextBlock Grid.Row="3"
+      <TextBlock Grid.Row="2"
                  Grid.Column="0"
                  Margin="0,0,0,8"
                  Text="Database provider:" />
-      <TextBlock Grid.Row="3"
+      <TextBlock Grid.Row="2"
                  Grid.Column="1"
                  Margin="12,0,0,8"
                  Text="{Binding DatabaseProvider}" />
 
-      <TextBlock Grid.Row="4"
+      <TextBlock Grid.Row="3"
                  Grid.Column="0"
                  Margin="0,0,0,8"
                  Text="Default repo:" />
-      <TextBlock Grid.Row="4"
+      <TextBlock Grid.Row="3"
                  Grid.Column="1"
                  Margin="12,0,0,8"
                  Text="{Binding DefaultRepositoryDisplay}" />
 
-      <TextBlock Grid.Row="5"
+      <TextBlock Grid.Row="4"
                  Grid.Column="0"
                  Margin="0,0,0,8"
                  Text="Available repos:" />
-      <ItemsControl Grid.Row="5"
+      <ItemsControl Grid.Row="4"
                     Grid.Column="1"
                     Margin="12,0,0,8"
                     ItemsSource="{Binding AvailableRepositoriesDisplay}">
@@ -70,11 +61,11 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <TextBlock Grid.Row="6"
+      <TextBlock Grid.Row="5"
                  Grid.Column="0"
                  Margin="0,0,0,8"
                  Text="Git token:" />
-      <TextBlock Grid.Row="6"
+      <TextBlock Grid.Row="5"
                  Grid.Column="1"
                  Margin="12,0,0,0"
                  Text="{Binding GitToken}" />

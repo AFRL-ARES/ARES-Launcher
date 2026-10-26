@@ -37,12 +37,15 @@ public sealed class DemoAresManager : IDemoAresManager
     if(!_configurationService.Current.DemoMode)
       return;
 
-    foreach(var serviceName in DemoServiceNames)
-      StartService(serviceName);
+    _logger.LogInformation("Starting all Demo Processes");
+
+    var tasks = DemoServiceNames.Select(StartServiceAsync);
+    await Task.WhenAll(tasks);
   }
 
   public async Task StopOrphanedProcessesAsync()
   {
+    _logger.LogInformation("Stopping Any Orphan Processes");
     await _orphanCleanupLock.WaitAsync();
     try
     {
@@ -137,10 +140,13 @@ public sealed class DemoAresManager : IDemoAresManager
     _serviceTasks.Clear();
   }
 
-  private void StartService(string serviceName)
+  private async Task StartServiceAsync(string serviceName)
   {
     if(_serviceTokens.ContainsKey(serviceName))
+    {
+      _logger.LogWarning("Tried starting the service {serviceName}, but failed due to an existing service token with the same key.", serviceName);
       return;
+    }
 
     var executablePath = _executableGetter.GetDemoServiceExecutablePath(serviceName);
     if(executablePath is null || !File.Exists(executablePath))
@@ -156,36 +162,42 @@ public sealed class DemoAresManager : IDemoAresManager
       return;
     }
 
-    var process = new Process
-    {
-      StartInfo = new ProcessStartInfo
-      {
-        FileName = executablePath,
-        WorkingDirectory = workingDirectory,
-        UseShellExecute = false,
-        CreateNoWindow = true
-      }
-    };
-
     try
     {
-      if(!process.Start())
-        throw new InvalidOperationException($"Failed to start demo service {serviceName}.");
+      var (process, cancellationTokenSource, startedProcess) = await Task.Run(() =>
+      {
+        var p = new Process
+        {
+          StartInfo = new ProcessStartInfo
+          {
+            FileName = executablePath,
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true
+          }
+        };
 
-      var cancellationTokenSource = new CancellationTokenSource();
-      var startedProcess = new StartedDemoProcess(process.Id, process.WaitForExitAndKillOnCancelAsync(cancellationTokenSource.Token));
+        if(!p.Start())
+        {
+          throw new InvalidOperationException($"Failed to start demo service {serviceName}.");
+        }
+
+        var cts = new CancellationTokenSource();
+        var started = new StartedDemoProcess(p.Id, p.WaitForExitAndKillOnCancelAsync(cts.Token));
+        return (p, cts, started);
+      });
 
       _serviceTokens[serviceName] = cancellationTokenSource;
       _serviceProcessIds[serviceName] = startedProcess.ProcessId;
       _serviceTasks[serviceName] = startedProcess.Task;
 
       ProcessServiceTask(serviceName, startedProcess, cancellationTokenSource);
+
+      _logger.LogInformation("Successfully started the demo service {serviceName}", serviceName);
     }
     catch(Exception ex)
     {
       _logger.LogError(ex, "Failed to start demo service {ServiceName}.", serviceName);
-      ProcessExtensions.TerminateProcess(process);
-      process.Dispose();
     }
   }
 
@@ -197,7 +209,7 @@ public sealed class DemoAresManager : IDemoAresManager
     {
       if(task.IsFaulted)
         _logger.LogError(task.Exception, "Demo service {ServiceName} faulted.", serviceName);
-      
+
       else if(!cancellationTokenSource.IsCancellationRequested)
         _logger.LogInformation("Demo service {ServiceName} completed.", serviceName);
 

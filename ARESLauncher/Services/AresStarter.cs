@@ -5,7 +5,6 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
-using ARESLauncher.Models;
 using Microsoft.Extensions.Logging;
 using ARESLauncher.Services.Configuration;
 
@@ -18,8 +17,7 @@ public class AresStarter : IAresStarter
   private readonly IAppConfigurationService _configurationService;
   private readonly IDatabaseManager _databaseManager;
   private readonly ILogger<AresStarter> _logger;
-  private readonly BehaviorSubject<bool> _aresUiRunningSubject = new(false);
-  private readonly BehaviorSubject<bool> _aresServiceRunningSubject = new(false);
+  private readonly BehaviorSubject<bool> _aresRunningSubject = new(false);
   private Task _uiTask = Task.CompletedTask;
   private Task _serviceTask = Task.CompletedTask;
   private CancellationTokenSource _cancellationTokenSource = new();
@@ -36,8 +34,7 @@ public class AresStarter : IAresStarter
     _configurationService = configurationService;
     _databaseManager = databaseManager;
     _logger = logger;
-    AresUiRunning = _aresUiRunningSubject.AsObservable();
-    AresServiceRunning = _aresServiceRunningSubject.AsObservable();
+    AresRunning = _aresRunningSubject.AsObservable();
   }
 
   public async void Start()
@@ -65,7 +62,7 @@ public class AresStarter : IAresStarter
     _cancellationTokenSource = new CancellationTokenSource();
     _stopInitiated = 0;
 
-    if(!_aresUiRunningSubject.Value)
+    if(!_aresRunningSubject.Value)
       _uiTask = StartUi(_cancellationTokenSource.Token, demoMode) ?? Task.CompletedTask;
   }
 
@@ -93,71 +90,12 @@ public class AresStarter : IAresStarter
 
   public void TakeOwnershipUi(Process uiProcess)
   {
-    if(_aresUiRunningSubject.Value)
+    if(_aresRunningSubject.Value)
       throw new InvalidOperationException("We already have a UI process running. Can't take ownership of a new one before stopping the other one.");
     
     var uiTask = uiProcess.WaitForExitAndKillOnCancelAsync(_cancellationTokenSource.Token);
-    ProcessUiTask(uiTask);
+    ProcessAresTask(uiTask);
     _uiTask = uiTask;
-  }
-
-  public void TakeOwnershipService(Process serviceProcess)
-  {
-    if(_aresServiceRunningSubject.Value)
-      throw new InvalidOperationException("We already have a Service process running. Can't take ownership of a new one before stopping the other one.");
-
-    var serviceTask = serviceProcess.WaitForExitAndKillOnCancelAsync(_cancellationTokenSource.Token);
-    ProcessServiceTask(serviceTask);
-    _serviceTask = serviceTask;
-  }
-
-  private Task? StartService(CancellationToken cancellationToken)
-  {
-    var serviceExecutable = _executableGetter.GetServiceExecutablePath();
-    if(serviceExecutable is null)
-    {
-      _logger.LogError("Couldn't resolve the path for service component.");
-      return null;
-    }
-    var serviceExists = File.Exists(serviceExecutable);
-
-    if(!serviceExists)
-    {
-      _logger.LogError("Service executable is not present. Don't know what to start.");
-      return null;
-    }
-
-    var serviceDir = Path.GetDirectoryName(serviceExecutable) ?? "";
-
-    var process = new Process
-    {
-      StartInfo = new ProcessStartInfo
-      {
-        FileName = serviceExecutable,
-        WorkingDirectory = serviceDir,
-        UseShellExecute = false,
-        CreateNoWindow = true
-      }
-    };
-
-    try
-    {
-      if(!process.Start())
-        throw new InvalidOperationException("Failed to start the ARES service process.");
-
-      var serviceTask = process.WaitForExitAndKillOnCancelAsync(cancellationToken);
-      ProcessServiceTask(serviceTask);
-
-      return serviceTask;
-    }
-    catch(Exception ex)
-    {
-      ProcessExtensions.TerminateProcess(process);
-      process.Dispose();
-      var serviceTask = Task.FromException<int>(ex);
-      ProcessServiceTask(serviceTask);
-      return serviceTask;
-    }
   }
 
   private Task? StartUi(CancellationToken cancellationToken, bool demoMode)
@@ -165,14 +103,14 @@ public class AresStarter : IAresStarter
     var uiExecutable = _executableGetter.GetUiExecutablePath();
     if(uiExecutable is null)
     {
-      _logger.LogError("Couldn't resolve the path for ui component.");
+      _logger.LogError("Could not resolve the path for UI component.");
       return null;
     }
     var uiExists = File.Exists(uiExecutable);
 
     if(!uiExists)
     {
-      _logger.LogError("Ui executable is not present. Don't know what to start.");
+      _logger.LogError("UI executable is not present, unable to start ARES.");
       return null;
     }
 
@@ -185,6 +123,7 @@ public class AresStarter : IAresStarter
       UseShellExecute = false,
       CreateNoWindow = true
     };
+
     if(demoMode)
       startInfo.ArgumentList.Add("--demo");
 
@@ -192,10 +131,10 @@ public class AresStarter : IAresStarter
     try
     {
       if(!process.Start())
-        throw new InvalidOperationException("Failed to start the ARES UI process.");
+        throw new InvalidOperationException("Failed to start the ARES process.");
 
       var uiTask = process.WaitForExitAndKillOnCancelAsync(cancellationToken);
-      ProcessUiTask(uiTask);
+      ProcessAresTask(uiTask);
 
       return uiTask;
     }
@@ -203,15 +142,15 @@ public class AresStarter : IAresStarter
     {
       ProcessExtensions.TerminateProcess(process);
       process.Dispose();
-      var uiTask = Task.FromException<int>(ex);
-      ProcessUiTask(uiTask);
-      return uiTask;
+      var aresTask = Task.FromException<int>(ex);
+      ProcessAresTask(aresTask);
+      return aresTask;
     }
   }
 
-  private void ProcessUiTask(Task ui)
+  private void ProcessAresTask(Task ares)
   {
-    ui.ContinueWith(t =>
+    ares.ContinueWith(t =>
      {
        if(t.IsFaulted)
        {
@@ -224,31 +163,10 @@ public class AresStarter : IAresStarter
          TriggerStopOnce();
        }
 
-       _aresUiRunningSubject.OnNext(false);
+       _aresRunningSubject.OnNext(false);
      }, TaskScheduler.Default);
 
-    _aresUiRunningSubject.OnNext(true);
-  }
-
-  private void ProcessServiceTask(Task service)
-  {
-    service.ContinueWith(t =>
-    {
-      if(t.IsFaulted)
-      {
-        _logger.LogError(t.Exception, "Service task faulted; stopping ARES.");
-        TriggerStopOnce();
-      }
-      else if(!t.IsCanceled)
-      {
-        _logger.LogInformation("Service task completed; stopping ARES.");
-        TriggerStopOnce();
-      }
-
-      _aresServiceRunningSubject.OnNext(false);
-    }, TaskScheduler.Default);
-
-    _aresServiceRunningSubject.OnNext(true);
+    _aresRunningSubject.OnNext(true);
   }
 
   private void TriggerStopOnce()
@@ -259,11 +177,8 @@ public class AresStarter : IAresStarter
 
   private bool IsHealthyRunning()
   {
-    return _aresBinaryManager.CurrentLayout == AresReleaseLayout.UnifiedUiOnly
-      ? _aresUiRunningSubject.Value
-      : _aresUiRunningSubject.Value && _aresServiceRunningSubject.Value;
+    return _aresRunningSubject.Value;
   }
 
-  public IObservable<bool> AresUiRunning { get; }
-  public IObservable<bool> AresServiceRunning { get; }
+  public IObservable<bool> AresRunning { get; }
 }
