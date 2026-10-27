@@ -10,8 +10,7 @@ public class ConflictResolutionDialogViewModel : ReactiveObject
     KillCommand = ReactiveCommand.CreateFromTask(conflictManager.Kill);
     TakeOverCommand = ReactiveCommand.Create(() =>
     {
-      conflictManager.TakeOverService();
-      conflictManager.TakeOverUi();
+      conflictManager.TakeOverAres();
     });
 
     IgnoreCommand = ReactiveCommand.Create(() => Unit.Default);

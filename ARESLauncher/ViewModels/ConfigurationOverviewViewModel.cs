@@ -11,7 +11,6 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
 {
   private readonly IAppConfigurationService _configurationService;
   private string _uiDataPath = string.Empty;
-  private string _serviceDataPath = string.Empty;
   private string _sqliteDatabasePath = string.Empty;
   private string _databaseProvider = string.Empty;
   private string _defaultRepositoryDisplay = string.Empty;
@@ -21,7 +20,6 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   public ConfigurationOverviewViewModel(IAppConfigurationService configurationService)
   {
     _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
-    InstalledAresLayout = string.Empty;
     AresDataPath = "";
     Refresh();
   }
@@ -30,12 +28,6 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   {
     get => _uiDataPath;
     private set => this.RaiseAndSetIfChanged(ref _uiDataPath, value);
-  }
-
-  public string ServiceDataPath
-  {
-    get => _serviceDataPath;
-    private set => this.RaiseAndSetIfChanged(ref _serviceDataPath, value);
   }
 
   public string SqliteDatabasePath
@@ -69,9 +61,6 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
   }
 
   [Reactive]
-  public partial string InstalledAresLayout { get; private set; }
-
-  [Reactive]
   public partial string AresDataPath { get; private set; }
 
   public void Refresh()
@@ -79,13 +68,11 @@ public partial class ConfigurationOverviewViewModel : ViewModelBase
     var current = _configurationService.Current;
 
     UiDataPath = current.UiBinaryPath;
-    ServiceDataPath = current.ServiceBinaryPath;
     SqliteDatabasePath = current.SqliteDatabasePath;
     DatabaseProvider = current.DatabaseProvider.ToString();
     DefaultRepositoryDisplay = $"{current.CurrentAresRepo.Owner}/{current.CurrentAresRepo.Repo}";
     AvailableRepositoriesDisplay = current.AvailableAresRepos.Select(repo => $"{repo.Owner}/{repo.Repo}").ToArray();
     GitToken = current.GitToken;
     AresDataPath = current.AresDataPath;
-    InstalledAresLayout = current.InstalledAresLayout.ToString();
   }
 }

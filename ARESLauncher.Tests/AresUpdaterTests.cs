@@ -15,11 +15,8 @@ public class AresUpdaterTests
   {
     var tempRoot = TestPaths.CreateTempDirectory();
     var uiDir = Path.Combine(tempRoot, "ui");
-    var serviceDir = Path.Combine(tempRoot, "service");
     Directory.CreateDirectory(uiDir);
-    Directory.CreateDirectory(serviceDir);
     File.WriteAllText(Path.Combine(uiDir, "stale.txt"), "old");
-    File.WriteAllText(Path.Combine(serviceDir, "stale.txt"), "old");
 
     try
     {
@@ -31,7 +28,6 @@ public class AresUpdaterTests
       {
         CurrentAresRepo = source,
         UiBinaryPath = uiDir,
-        ServiceBinaryPath = serviceDir,
         GitToken = "token"
       });
       var appSettingsUpdater = new FakeAppSettingsUpdater();
@@ -58,14 +54,11 @@ public class AresUpdaterTests
 
       Assert.That(File.Exists(Path.Combine(uiDir, "app.bin")), Is.True);
       Assert.That(File.Exists(Path.Combine(uiDir, "stale.txt")), Is.False);
-      Assert.That(Directory.Exists(serviceDir), Is.False);
 
-      var metadata = BinaryMetadataHelper.ReadMetadata(uiDir);
+      var metadata = await BinaryMetadataHelper.ReadMetadata(uiDir);
       Assert.That(metadata, Is.Not.Null);
       Assert.That(metadata!.Source, Is.EqualTo(source));
       Assert.That(metadata.Version, Is.EqualTo(version.ToNormalizedString()));
-      Assert.That(metadata.Layout, Is.EqualTo(AresReleaseLayout.UnifiedUiOnly));
-      Assert.That(configuration.Current.InstalledAresLayout, Is.EqualTo(AresReleaseLayout.UnifiedUiOnly));
 
       Assert.That(appSettingsUpdater.UpdateAllCallCount, Is.EqualTo(1));
       Assert.That(certificateManager.UpdateCallCount, Is.EqualTo(1));
@@ -178,8 +171,7 @@ public class AresUpdaterTests
       var downloader = new RecordingAresDownloader(null); // Should not be called
       var configuration = new FakeAppConfigurationService(new LauncherConfiguration
       {
-        UiBinaryPath = uiDir,
-        ServiceBinaryPath = uiDir
+        UiBinaryPath = uiDir
       });
 
       var updater = new AresUpdater(
@@ -196,7 +188,7 @@ public class AresUpdaterTests
       Assert.That(downloader.DownloadCallCount, Is.EqualTo(0));
       Assert.That(File.Exists(Path.Combine(uiDir, "debug.bin")), Is.True);
 
-      var metadata = BinaryMetadataHelper.ReadMetadata(uiDir);
+      var metadata = await BinaryMetadataHelper.ReadMetadata(uiDir);
       Assert.That(metadata!.Version, Is.EqualTo(version.ToNormalizedString()));
     }
     finally
@@ -222,7 +214,7 @@ public class AresUpdaterTests
       var downloader = new RecordingAresDownloader(null);
       var updater = new AresUpdater(
         downloader,
-        new FakeAppConfigurationService(new LauncherConfiguration { UiBinaryPath = uiDir, ServiceBinaryPath = uiDir }),
+        new FakeAppConfigurationService(new LauncherConfiguration { UiBinaryPath = uiDir }),
         new FakeAppSettingsUpdater(),
         new FakeCertificateManager(),
         new FakeDatabaseManager(),
@@ -231,11 +223,12 @@ public class AresUpdaterTests
 
       var package = updater.GetManualUpdatePackage();
       await updater.UpdateFromManualPackage();
+      var metadata = await BinaryMetadataHelper.ReadMetadata(uiDir);
 
       Assert.That(package?.Version, Is.EqualTo(version));
       Assert.That(downloader.DownloadCallCount, Is.EqualTo(0));
       Assert.That(File.Exists(Path.Combine(uiDir, "manual.bin")), Is.True);
-      Assert.That(BinaryMetadataHelper.ReadMetadata(uiDir)?.Version, Is.EqualTo(version.ToNormalizedString()));
+      Assert.That(metadata?.Version, Is.EqualTo(version.ToNormalizedString()));
     }
     finally
     {
@@ -260,8 +253,7 @@ public class AresUpdaterTests
       var configuration = new FakeAppConfigurationService(new LauncherConfiguration
       {
         CurrentAresRepo = source,
-        UiBinaryPath = uiDir,
-        ServiceBinaryPath = uiDir
+        UiBinaryPath = uiDir
       });
 
       var updater = new AresUpdater(

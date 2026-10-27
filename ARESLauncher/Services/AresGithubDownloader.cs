@@ -54,11 +54,12 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
 
   private async Task<List<AresRelease>> FetchAndNormalizeVersions(GitHubClient client, string owner, string repo)
   {
+    _logger.LogDebug("Fetching ARES Versions Available for Download...");
     var versions = new List<AresRelease>();
 
     try
     {
-      var releases = await client.Repository.Release.GetAll(owner, repo, _fetchOptions);
+      var releases = await client.Repository.Release.GetAll(owner, repo, _fetchOptions).ConfigureAwait(false);
 
       foreach(var release in releases)
       {
@@ -67,20 +68,23 @@ public partial class AresGithubDownloader(ILogger<AresGithubDownloader> _logger)
           continue;
 
         if(SemanticVersion.TryParse(normalizedTag, out var semanticVersion))
+        {
           versions.Add(new AresRelease
           {
             Version = semanticVersion,
             IsBeta = release.Prerelease,
             ReleaseNotes = release.Body
           });
+
+        }
       }
+
+      _logger.LogInformation("Found and Successfully Parsed {number} {item} Versions", versions.Count, repo);
     }
 
     catch(NotFoundException)
     {
-      _logger.LogError(
-        "Repository not found for {SourceOwner}/{SourceRepo}. Maybe you're missing the git auth token?",
-        owner, repo);
+      _logger.LogError("Repository not found for {SourceOwner}/{SourceRepo}. Maybe you're missing the git auth token?", owner, repo);
     }
     catch(Exception e)
     {

@@ -6,13 +6,9 @@ namespace ARESLauncher.Services;
 
 public interface IAresStarter
 {
-  IObservable<bool> AresUiRunning { get; }
-  IObservable<bool> AresServiceRunning { get; }
-
+  IObservable<bool> AresRunning { get; }
   void Start();
   Task Stop();
   Task Restart();
-
   void TakeOwnershipUi(Process uiProcess);
-  void TakeOwnershipService(Process serviceProcess);
 }

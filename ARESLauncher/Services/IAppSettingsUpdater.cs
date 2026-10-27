@@ -1,5 +1,3 @@
-using ARESLauncher.Models;
-
 namespace ARESLauncher.Services;
 
 /// <summary>
@@ -8,6 +6,5 @@ namespace ARESLauncher.Services;
 /// </summary>
 public interface IAppSettingsUpdater
 {
-  void Update(AresComponent component);
-  void UpdateAll();
+  void UpdateAresSettings();
 }

@@ -93,9 +93,7 @@ public class AresUpdater : IAresUpdater
     var version = Tools.VersionExtensions.GetVersionFromZipName(path);  
 
     await Unpacker.Unpack(path, dest);
-    var layout = DetectInstalledLayout(dest);
-    _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
-    BinaryMetadataHelper.WriteMetadata(dest, source, version, layout);
+    BinaryMetadataHelper.WriteMetadata(dest, source, version);
 
     await ApplyLocalSettings();
   }
@@ -103,30 +101,30 @@ public class AresUpdater : IAresUpdater
   public async Task Update(SemanticVersion version)
   {
     var uiDir = _configurationService.Current.UiBinaryPath;
-    var serviceDir = _configurationService.Current.ServiceBinaryPath;
+    _logger.LogInformation("Cleaning Up Previous ARES Installs...");
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     _updateStepDescriptionSubject.OnNext("Cleaning up the previous version.");
 
     if(Directory.Exists(uiDir))
       Directory.Delete(uiDir, true);
-    if(Directory.Exists(serviceDir))
-      Directory.Delete(serviceDir, true);
 
     var source = _configurationService.Current.CurrentAresRepo;
 
     _currentUpdateStepSubject.OnNext(UpdateStep.Downloading);
     try
     {
-      var layout = await DownloadPackage(source, version, uiDir);
-      _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
+      await DownloadPackage(source, version, uiDir);
     }
-    catch(Exception)
+
+    catch(Exception ex)
     {
       _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
       _updateStepDescriptionSubject.OnNext("");
+      _logger.LogError(ex, "Encountered an error while downloading ARES");
       throw;
     }
 
+    _logger.LogInformation("Applying local settings to users ARES system");
     await ApplyLocalSettings();
   }
 
@@ -147,40 +145,41 @@ public class AresUpdater : IAresUpdater
   public async Task UpdateFromManualPackage()
   {
     var offlinePath = Path.Combine(AppContext.BaseDirectory, "Offline");
+    _logger.LogInformation("Determined offline install available, path to install is {path}", offlinePath);
+
     var package = Directory.Exists(offlinePath)
       ? Directory.EnumerateFiles(offlinePath, "*.zip")
         .Select(path => new { Path = path, IsValid = AresReleaseArchive.TryGetVersion(path, out var version), Version = version })
         .Where(candidate => candidate.IsValid && candidate.Version is not null)
         .OrderByDescending(candidate => candidate.Version)
-        .FirstOrDefault()
-      : null;
+        .FirstOrDefault() : null;
 
     if(package is null)
+    {
+      _logger.LogError("No compatible ARES package was found in the Offline folder.");
       throw new InvalidOperationException("No compatible ARES package was found in the Offline folder.");
-
+    }
+      
     var uiDir = _configurationService.Current.UiBinaryPath;
-    var serviceDir = _configurationService.Current.ServiceBinaryPath;
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     _updateStepDescriptionSubject.OnNext("Cleaning up the previous version.");
 
     if(Directory.Exists(uiDir))
       Directory.Delete(uiDir, true);
-    if(Directory.Exists(serviceDir))
-      Directory.Delete(serviceDir, true);
 
     try
     {
       _updateStepDescriptionSubject.OnNext("Unpacking the local package.");
+      _logger.LogInformation("Unpacking local ARES package");
       _updateProgressSubject.OnNext(1.0);
       await Unpacker.Unpack(package.Path, uiDir);
-      var layout = DetectInstalledLayout(uiDir);
-      _configurationService.Update(cfg => cfg.InstalledAresLayout = layout);
-      BinaryMetadataHelper.WriteMetadata(uiDir, _configurationService.Current.CurrentAresRepo, package.Version!, layout);
+      BinaryMetadataHelper.WriteMetadata(uiDir, _configurationService.Current.CurrentAresRepo, package.Version!);
     }
-    catch(Exception)
+    catch(Exception ex)
     {
       _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
       _updateStepDescriptionSubject.OnNext("");
+      _logger.LogError(ex, "Encoutnered error trying to install local ARES package");
       throw;
     }
 
@@ -191,15 +190,23 @@ public class AresUpdater : IAresUpdater
   {
     _currentUpdateStepSubject.OnNext(UpdateStep.Other);
     _updateStepDescriptionSubject.OnNext("Updating settings");
-    _appSettingsUpdater.UpdateAll();
+    _logger.LogInformation("Updating Local ARES Settings");
+    _appSettingsUpdater.UpdateAresSettings();
+    
     _updateStepDescriptionSubject.OnNext("Updating certificates");
+    _logger.LogInformation("Updating Local ARES Certificates");
     await _certificateManager.Update();
+
     _updateStepDescriptionSubject.OnNext("Ensuring database is up to date");
+    _logger.LogInformation("Checking Database Status");
+
     await _databaseManager.Refresh();
     if(_databaseManager.DatabaseStatus != DatabaseStatus.UpToDate)
     {
+      _logger.LogInformation("Determined Database is Out of Date, Updating the Database");
       await _databaseManager.RunMigrations();
     }
+
     _currentUpdateStepSubject.OnNext(UpdateStep.Idle);
     _updateStepDescriptionSubject.OnNext("");
   }
@@ -303,7 +310,7 @@ public class AresUpdater : IAresUpdater
   public IObservable<double> UpdateProgress { get; }
   public IObservable<UpdateStep> CurrentUpdateStep { get; }
 
-  private async Task<AresReleaseLayout> DownloadPackage(AresSource source, SemanticVersion version, string dest)
+  private async Task DownloadPackage(AresSource source, SemanticVersion version, string dest)
   {
     var tempPath = Path.GetTempPath();
     try
@@ -334,32 +341,22 @@ public class AresUpdater : IAresUpdater
       }
       else
       {
+        _logger.LogInformation("Downloading the ARES Pacakge for Install");
         _updateStepDescriptionSubject.OnNext("Downloading the package.");
         packageDest = await _downloader.Download(source, version, tempPath, _configurationService.Current.GitToken,
           new Progress<double>(pg => _updateProgressSubject.OnNext(pg)));
       }
 
+      _logger.LogInformation("Unpackaging ARES...");
       _updateStepDescriptionSubject.OnNext("Unpacking the package");
       await Unpacker.Unpack(packageDest, dest);
-      var layout = DetectInstalledLayout(dest);
-      BinaryMetadataHelper.WriteMetadata(dest, source, version, layout);
-      return layout;
+      _logger.LogInformation("Writing Binary Metadata to User System");
+      BinaryMetadataHelper.WriteMetadata(dest, source, version);
     }
     catch(Exception e)
     {
       _logger.LogError("Failed to acquire the ARES package. {}", e);
       throw;
     }
-  }
-
-  private static AresReleaseLayout DetectInstalledLayout(string installDirectory)
-  {
-    var serviceExecutable = Path.Combine(installDirectory, "AresService");
-    if(OperatingSystem.IsWindows())
-    {
-      serviceExecutable = Path.ChangeExtension(serviceExecutable, "exe");
-    }
-
-    return AresReleaseLayout.UnifiedUiOnly;
   }
 }

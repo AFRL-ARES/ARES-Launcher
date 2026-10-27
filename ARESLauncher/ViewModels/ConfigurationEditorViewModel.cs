@@ -21,7 +21,6 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   private readonly IAresUpdater _aresUpdater;
   private readonly IAresBinaryManager _aresBinaryManager;
   private readonly IReadOnlyList<DatabaseProvider> _databaseProviders;
-  private readonly IReadOnlyList<AresReleaseLayout> _releaseLayouts;
 
   public ConfigurationEditorViewModel(IAppConfigurationService configurationService, 
     IAppSettingsUpdater appSettingsUpdater,
@@ -33,7 +32,6 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     _aresUpdater = aresUpdater;
     _aresBinaryManager = aresBinaryManager;
     _databaseProviders = Enum.GetValues<DatabaseProvider>();
-    _releaseLayouts = Enum.GetValues<AresReleaseLayout>();
 
     AvailableRepositories = new ObservableCollection<AresSourceEditorViewModel>();
     EditableUiBinaryPath = string.Empty;
@@ -47,7 +45,6 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     EditableAresDataPath = string.Empty;
     EditableAresServiceProcessName = string.Empty;
     EditableAresUiProcessName = string.Empty;
-    EditableInstalledAresLayout = AresReleaseLayout.UnifiedUiOnly;
     
     var canInstall = this.WhenAnyValue(
       x => x.SelectedRelease,
@@ -100,18 +97,14 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     _configurationService.Update(configuration =>
     {
       configuration.UiBinaryPath = EditableUiBinaryPath;
-      configuration.ServiceBinaryPath = EditableServiceBinaryPath;
       configuration.SqliteDatabasePath = EditableSqliteDatabasePath;
       configuration.SqlServerConnectionString = EditableSqlServerConnectionString;
       configuration.PostgresConnectionString = EditablePostgresConnectionString;
       configuration.DatabaseProvider = EditableDatabaseProvider;
-      configuration.ServiceEndpoint = EditableServiceEndpoint;
       configuration.UiEndpoint = EditableUiEndpoint;
       configuration.GitToken = EditableGitToken;
       configuration.AresDataPath = EditableAresDataPath;
-      configuration.AresServiceProcessName = EditableAresServiceProcessName;
       configuration.AresUiProcessName = EditableAresUiProcessName;
-      configuration.InstalledAresLayout = EditableInstalledAresLayout;
       configuration.IncludeBeta = EditableIncludeBeta;
       configuration.DemoMode = EditableDemoMode;
 
@@ -134,7 +127,7 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
 
     LoadEditableConfiguration();
     ConfigurationSaved?.Invoke(this, EventArgs.Empty);
-    _appSettingsUpdater.UpdateAll();
+    _appSettingsUpdater.UpdateAresSettings();
   }
   
   private void LoadEditableConfiguration()
@@ -142,18 +135,14 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
     var current = _configurationService.Current;
 
     EditableUiBinaryPath = current.UiBinaryPath;
-    EditableServiceBinaryPath = current.ServiceBinaryPath;
     EditableSqliteDatabasePath = current.SqliteDatabasePath;
     EditableSqlServerConnectionString = current.SqlServerConnectionString;
     EditablePostgresConnectionString = current.PostgresConnectionString;
     EditableDatabaseProvider = current.DatabaseProvider;
-    EditableServiceEndpoint = current.ServiceEndpoint;
     EditableUiEndpoint = current.UiEndpoint;
     EditableGitToken = current.GitToken;
     EditableAresDataPath = current.AresDataPath;
-    EditableAresServiceProcessName = current.AresServiceProcessName;
     EditableAresUiProcessName = current.AresUiProcessName;
-    EditableInstalledAresLayout = current.InstalledAresLayout;
     EditableIncludeBeta = current.IncludeBeta;
     EditableDemoMode = current.DemoMode;
 
@@ -254,7 +243,6 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   public event EventHandler? ConfigurationSaved;
   public Interaction<UpdateConfirmationRequest, UpdateConfirmationResponse> UpdateConfirmationDialog { get; } = new();
   public IReadOnlyList<DatabaseProvider> DatabaseProviders => _databaseProviders;
-  public IReadOnlyList<AresReleaseLayout> ReleaseLayouts => _releaseLayouts;
   public ObservableCollection<AresSourceEditorViewModel> AvailableRepositories { get; }
   [Reactive]
   public partial AresRelease[]? AvailableReleases { get; private set; }
@@ -295,8 +283,6 @@ public partial class ConfigurationEditorViewModel : ViewModelBase
   public partial string EditableAresServiceProcessName { get; set; }
   [Reactive]
   public partial string EditableAresUiProcessName { get; set; }
-  [Reactive]
-  public partial AresReleaseLayout EditableInstalledAresLayout { get; set; }
   [Reactive]
   public partial bool EditableIncludeBeta { get; set; }
   [Reactive]

@@ -2,8 +2,7 @@
 public enum AresState
 {
   Unknown,
-  OneRunning,
-  BothRunning,
+  Running,
   Ready,
   NeedsDbUpdate,
   DatabaseError,

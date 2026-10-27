@@ -18,25 +18,15 @@ public interface IAresBinaryManager
   SemanticVersion? CurrentVersion { get; }
 
   /// <summary>
-  ///   The appsettings for the service
-  /// </summary>
-  AppSettingsService? ServiceSettings { get; }
-
-  /// <summary>
   ///   The appsettings for the UI
   /// </summary>
-  AppSettingsUi? UiSettings { get; }
+  AppSettingsUi? AresSettings { get; }
 
   /// <summary>
   ///   What's the source of the current ARES binaries.
   ///   Null if there are no binaries or source unknown.
   /// </summary>
   AresSource? CurrentSource { get; }
-
-  /// <summary>
-  ///   The effective installed ARES release layout.
-  /// </summary>
-  AresReleaseLayout CurrentLayout { get; }
 
   /// <summary>
   ///   Refreshes its knowledge about the current and available versions of ARES.
@@ -49,12 +39,5 @@ public interface IAresBinaryManager
   ///   Does not move the binaries if present in current path
   /// </summary>
   /// <param name="path"></param>
-  void SetUiDataPath(Uri path);
-
-  /// <summary>
-  ///   Sets a new path for where the service binaries should be stored
-  ///   Does not move the binaries if present in current path
-  /// </summary>
-  /// <param name="uri"></param>
-  void SetServiceDataPath(Uri uri);
+  void SetDataPath(Uri path);
 }
