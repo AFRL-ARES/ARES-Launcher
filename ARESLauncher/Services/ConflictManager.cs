@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace ARESLauncher.Services;
 
-public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService _configurationService, IAresBinaryManager _aresBinaryManager) : IConflictManager
+public class ConflictManager(IAresStarter _aresStarter, IAppConfigurationService _configurationService) : IConflictManager
 {
   public bool FindPotentialAres()
   {

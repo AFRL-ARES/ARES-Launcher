@@ -22,6 +22,10 @@
 		<Version>0.3.0</Version>
 	</PropertyGroup>
 
+	<PropertyGroup>
+		<PublishReadyToRun>true</PublishReadyToRun>
+	</PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ARESLauncher\ARESLauncher.csproj" />
   </ItemGroup>
